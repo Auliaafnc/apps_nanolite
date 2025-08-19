@@ -101,11 +101,11 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     Route::prefix('categories')->group(function () {
-        Route::post('/',      [ProductCreateHandler::class,      'handler'])->name('api.categories.create');
-        Route::get('/',       [ProductPaginationHandler::class, 'handler'])->name('api.categories.pagination');
-        Route::get('/{id}',   [ProductDetailHandler::class,     'handler'])->name('api.categories.detail');
-        Route::put('/{id}',   [ProductUpdateHandler::class,     'handler'])->name('api.categories.update');
-        Route::delete('/{id}',[ProductDeleteHandler::class,     'handler'])->name('api.categories.delete');
+        Route::post('/',      [CategoryCreateHandler::class,      'handler'])->name('api.categories.create');
+        Route::get('/',       [CategoryPaginationHandler::class, 'handler'])->name('api.categories.pagination');
+        Route::get('/{id}',   [CategoryDetailHandler::class,     'handler'])->name('api.categories.detail');
+        Route::put('/{id}',   [CategoryUpdateHandler::class,     'handler'])->name('api.categories.update');
+        Route::delete('/{id}',[CategoryDeleteHandler::class,     'handler'])->name('api.categories.delete');
     });
 
     Route::prefix('companies')->group(function () {
@@ -134,19 +134,19 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     Route::prefix('customers')->group(function () {
-        Route::post('/create',       [CustomerCreateHandler::class,      'handler'])->name('api.customers.create');
+        Route::post('/create', [CustomerCreateHandler::class,      'handler'])->name('api.customers.create');
         Route::get('/',        [CustomerPaginationHandler::class, 'handler'])->name('api.customers.pagination');
         Route::get('/{id}',    [CustomerDetailHandler::class,     'handler'])->name('api.customers.detail');
         Route::put('/{id}',    [CustomerUpdateHandler::class,     'handler'])->name('api.customers.update');
         Route::delete('/{id}', [CustomerDeleteHandler::class,     'handler'])->name('api.customers.delete');
     });
 
-    Route::prefix('oders')->group(function () {
-        Route::post('/',       [OderCreateHandler::class,      'handler'])->name('api.oders.create');
-        Route::get('/',        [OderPaginationHandler::class, 'handler'])->name('api.oders.pagination');
-        Route::get('/{id}',    [OderDetailHandler::class,     'handler'])->name('api.oders.detail');
-        Route::put('/{id}',    [OderUpdateHandler::class,     'handler'])->name('api.oders.update');
-        Route::delete('/{id}', [OderDeleteHandler::class,     'handler'])->name('api.oders.delete');
+    Route::prefix('orders')->group(function () {
+        Route::post('/',       [OrderCreateHandler::class,      'handler'])->name('api.orders.create');
+        Route::get('/',        [OrderPaginationHandler::class, 'handler'])->name('api.orders.pagination');
+        Route::get('/{id}',    [OrderDetailHandler::class,     'handler'])->name('api.orders.detail');
+        Route::put('/{id}',    [OrderUpdateHandler::class,     'handler'])->name('api.orders.update');
+        Route::delete('/{id}', [OrderDeleteHandler::class,     'handler'])->name('api.orders.delete');
     });
 
     Route::prefix('product_returns')->group(function () {
@@ -184,11 +184,11 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     Route::prefix('customer_categories')->group(function () {
-        Route::post('/',       [CustomerCategorieCreateHandler::class,      'handler'])->name('api.customer_categories.create');
-        Route::get('/',        [CustomerCategoriePaginationHandler::class, 'handler'])->name('api.customer_categories.pagination');
-        Route::get('/{id}',    [CustomerCategorieDetailHandler::class,     'handler'])->name('api.customer_categories.detail');
-        Route::put('/{id}',    [CustomerCategorieUpdateHandler::class,     'handler'])->name('api.customer_categories.update');
-        Route::delete('/{id}', [CustomerCategorieDeleteHandler::class,     'handler'])->name('api.customer_categories.delete');
+        Route::post('/',       [CustomerCategoriesCreateHandler::class,      'handler'])->name('api.customer_categories.create');
+        Route::get('/',        [CustomerCategoriesPaginationHandler::class, 'handler'])->name('api.customer_categories.pagination');
+        Route::get('/{id}',    [CustomerCategoriesDetailHandler::class,     'handler'])->name('api.customer_categories.detail');
+        Route::put('/{id}',    [CustomerCategoriesUpdateHandler::class,     'handler'])->name('api.customer_categories.update');
+        Route::delete('/{id}', [CustomerCategoriesDeleteHandler::class,     'handler'])->name('api.customer_categories.delete');
     });
 
     Route::prefix('customer_programs')->group(function () {

@@ -1,23 +1,29 @@
 <?php
+
 namespace App\Filament\Admin\Resources\ProductResource\Api\Transformers;
 
 use Illuminate\Http\Resources\Json\JsonResource;
-use App\Models\Product;
+use Illuminate\Support\Facades\Storage;
 
-/**
- * @property Product $resource
- */
 class ProductTransformer extends JsonResource
 {
-
-    /**
-     * Transform the resource into an array.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return array
-     */
-    public function toArray($request)
+    public function toArray($request): array
     {
-        return $this->resource->toArray();
+        $this->resource->loadMissing(['brand:id,name','category:id,name','company:id,name']);
+
+        return [
+            'id'         => $this->id,
+            'company'    => $this->company?->name ?? null,
+            'brand'      => $this->brand?->name ?? '-',
+            'category'   => $this->category?->name ?? '-',
+            'name'       => $this->name,
+            'price'      => (int) ($this->price ?? 0),
+            'colors'     => is_array($this->colors) ? $this->colors : [],
+            'description'=> $this->description,
+            'image'      => $this->image ? Storage::url($this->image) : null,
+            'status'     => $this->status === 'active' ? 'Aktif' : 'Nonaktif',
+            'created_at' => optional($this->created_at)->format('d/m/Y'),
+            'updated_at' => optional($this->updated_at)->format('d/m/Y'),
+        ];
     }
 }

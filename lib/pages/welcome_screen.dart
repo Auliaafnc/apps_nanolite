@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-
 import 'login.dart';
 
 class WelcomeScreen extends StatelessWidget {
@@ -8,7 +7,7 @@ class WelcomeScreen extends StatelessWidget {
     final bool isTablet = MediaQuery.of(context).size.width >= 600;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF061F3D), // Warna seperti BulbScreen
+      backgroundColor: const Color(0xFF0A1B2D), // Warna background
       appBar: AppBar(
         title: const Text('nanopiko', style: TextStyle(color: Colors.black)),
         backgroundColor: Colors.grey[200],
@@ -16,12 +15,13 @@ class WelcomeScreen extends StatelessWidget {
       ),
       body: Center(
         child: SingleChildScrollView(
-          padding: EdgeInsets.all(isTablet ? 24 : 16),
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
+              // Logo bulat
               Container(
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   shape: BoxShape.circle,
@@ -36,22 +36,27 @@ class WelcomeScreen extends StatelessWidget {
                 ),
                 child: Image.asset(
                   'assets/images/nanolite_pikolite_logo.png',
-                  width: isTablet ? 220 : 160,
-                  height: isTablet ? 220 : 160,
+                  width: isTablet ? 260 : 180,
+                  height: isTablet ? 260 : 180,
                   fit: BoxFit.cover,
                 ),
               ),
-              const SizedBox(height: 24),
-              const Text(
+              const SizedBox(height: 32),
+
+              // Tagline miring
+              Text(
                 '#untungpakainanolite\n#murahbergaransi',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  fontSize: 16,
+                  fontSize: isTablet ? 20 : 16,
                   color: Colors.white,
                   fontWeight: FontWeight.w400,
+                  fontStyle: FontStyle.italic,
                 ),
               ),
               const SizedBox(height: 40),
+
+              // Tombol Get Started
               ElevatedButton(
                 onPressed: () {
                   Navigator.push(
@@ -62,11 +67,17 @@ class WelcomeScreen extends StatelessWidget {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.grey[300],
                   shape: const StadiumBorder(),
-                  padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isTablet ? 70 : 50,
+                    vertical: isTablet ? 20 : 15,
+                  ),
                 ),
-                child: const Text(
+                child: Text(
                   'Get Started',
-                  style: TextStyle(fontSize: 18, color: Colors.black),
+                  style: TextStyle(
+                    fontSize: isTablet ? 20 : 18,
+                    color: Colors.black,
+                  ),
                 ),
               ),
               const SizedBox(height: 40),

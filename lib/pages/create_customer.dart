@@ -1,30 +1,74 @@
+// lib/pages/create_customer.dart
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 
-import 'create_sales_order.dart';
-import 'customer.dart';
-import 'home.dart';
-import 'profile.dart';
+class CreateCustomerScreen extends StatefulWidget {
+  const CreateCustomerScreen({super.key});
 
-class CreateCustomerScreen extends StatelessWidget {
+  @override
+  State<CreateCustomerScreen> createState() => _CreateCustomerScreenState();
+}
+
+class _CreateCustomerScreenState extends State<CreateCustomerScreen> {
+  // ===== Image picker state =====
+  final ImagePicker _picker = ImagePicker();
+  final List<XFile> _photos = [];
+
+  Future<void> _pickFromGallery() async {
+    try {
+      final files = await _picker.pickMultiImage(imageQuality: 85);
+      if (files.isNotEmpty) {
+        setState(() => _photos.addAll(files));
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _pickFromCamera() async {
+    try {
+      final file = await _picker.pickImage(source: ImageSource.camera, imageQuality: 85);
+      if (file != null) {
+        setState(() => _photos.add(file));
+      }
+    } catch (_) {}
+  }
+
+  void _removePhoto(int index) => setState(() => _photos.removeAt(index));
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Create Customer'),
-        backgroundColor: Colors.grey[900],
+        title: const Text('nanopiko'),
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
+        elevation: 1,
       ),
-      backgroundColor: Colors.grey[900],
+      backgroundColor: const Color(0xFF0A1B2D),
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: EdgeInsets.all(20),
+          padding: const EdgeInsets.all(20),
           child: LayoutBuilder(
             builder: (context, constraints) {
-              bool isTablet = constraints.maxWidth >= 600;
-              double fieldWidth = isTablet ? (constraints.maxWidth - 60) / 2 : double.infinity;
+              final bool isTablet = constraints.maxWidth >= 600;
+              // HP: 2 kolom (gap 20), Tablet: lebih lega
+              final double fieldWidth =
+                  isTablet ? (constraints.maxWidth - 60) / 2 : (constraints.maxWidth - 20) / 2;
 
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  const Text(
+                    'Create Customer',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // ========= FORM UTAMA =========
                   Wrap(
                     spacing: 20,
                     runSpacing: 16,
@@ -39,104 +83,207 @@ class CreateCustomerScreen extends StatelessWidget {
                       _buildTextField('Link Google Maps', fieldWidth),
                     ],
                   ),
-                  SizedBox(height: 20),
-                  Text(
-                    'Alamat',
-                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+
+                  const SizedBox(height: 30),
+
+                  // ========= ALAMAT =========
+                  const Text('Alamat',
+                      style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 12),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.white30),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: LayoutBuilder(
+                      builder: (context, inner) {
+                        const double gap = 20;
+                        final bool isTabletInside = inner.maxWidth >= 600;
+                        final double innerFieldWidth =
+                            isTabletInside ? (inner.maxWidth - 60) / 2 : (inner.maxWidth - gap) / 2;
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text('Alamat',
+                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 16),
+                            Wrap(
+                              spacing: gap,
+                              runSpacing: 16,
+                              children: [
+                                _buildDropdown('Provinsi *', ['Jawa Barat', 'Jawa Timur'], innerFieldWidth),
+                                _buildDropdown('Kota/Kabupaten *', ['Bandung', 'Bekasi'], innerFieldWidth),
+                                _buildDropdown('Kecamatan *', ['Cimahi', 'Cileunyi'], innerFieldWidth),
+                                _buildDropdown('Kelurahan *', ['Kel. A', 'Kel. B'], innerFieldWidth),
+                                _buildTextField('Kode Pos', innerFieldWidth),
+                                _buildTextField('Detail Alamat *', innerFieldWidth, maxLines: 3),
+                              ],
+                            ),
+                          ],
+                        );
+                      },
+                    ),
                   ),
-                  SizedBox(height: 12),
-                  Wrap(
-                    spacing: 20,
-                    runSpacing: 16,
-                    children: [
-                      _buildDropdown('Provinsi', ['Jawa Barat', 'Jawa Timur'], fieldWidth),
-                      _buildDropdown('Kota/Kabupaten', ['Bandung', 'Bekasi'], fieldWidth),
-                      _buildDropdown('Kecamatan', ['Cimahi', 'Cileunyi'], fieldWidth),
-                      _buildDropdown('Kelurahan', ['Kel. A', 'Kel. B'], fieldWidth),
-                      _buildTextField('Kode Pos', fieldWidth),
-                      _buildTextField('Detail Alamat *', fieldWidth, maxLines: 3),
-                    ],
-                  ),
-                  SizedBox(height: 20),
-                  Text(
+
+                  const SizedBox(height: 30),
+
+                  // ========= GAMBAR (UPLOAD + PREVIEW) =========
+                  const Text(
                     'Gambar',
                     style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                   ),
-                  SizedBox(height: 10),
+                  const SizedBox(height: 10),
                   Container(
                     width: double.infinity,
-                    height: 150,
-                    padding: EdgeInsets.all(16),
+                    constraints: const BoxConstraints(minHeight: 150),
+                    padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       border: Border.all(color: Colors.white54),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Center(
-                      child: Text(
-                        'Drag & Drop your files or Browse',
-                        style: TextStyle(color: Colors.white54),
-                      ),
-                    ),
+                    child: _photos.isEmpty
+                        ? Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const SizedBox(height: 12),
+                              const Text(
+                                'Drag & Drop your files or Browse',
+                                style: TextStyle(color: Colors.white54),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 16),
+                              Wrap(
+                                spacing: 12,
+                                runSpacing: 12,
+                                alignment: WrapAlignment.center,
+                                children: [
+                                  OutlinedButton.icon(
+                                    onPressed: _pickFromGallery,
+                                    icon: const Icon(Icons.photo_library),
+                                    label: const Text('Pilih Foto'),
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: Colors.white,
+                                      side: const BorderSide(color: Colors.white38),
+                                    ),
+                                  ),
+                                  OutlinedButton.icon(
+                                    onPressed: _pickFromCamera,
+                                    icon: const Icon(Icons.photo_camera),
+                                    label: const Text('Kamera'),
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: Colors.white,
+                                      side: const BorderSide(color: Colors.white38),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                            ],
+                          )
+                        : Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Wrap(
+                                spacing: 10,
+                                runSpacing: 10,
+                                children: List.generate(_photos.length, (i) {
+                                  final file = File(_photos[i].path);
+                                  return Stack(
+                                    children: [
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: Image.file(
+                                          file,
+                                          width: 90,
+                                          height: 90,
+                                          fit: BoxFit.cover,
+                                        ),
+                                      ),
+                                      Positioned(
+                                        right: -6,
+                                        top: -6,
+                                        child: IconButton(
+                                          icon: const Icon(Icons.cancel, color: Colors.redAccent),
+                                          onPressed: () => _removePhoto(i),
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                }),
+                              ),
+                              const SizedBox(height: 12),
+                              Row(
+                                children: [
+                                  OutlinedButton.icon(
+                                    onPressed: _pickFromGallery,
+                                    icon: const Icon(Icons.add_photo_alternate),
+                                    label: const Text('Tambah Foto'),
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: Colors.white,
+                                      side: const BorderSide(color: Colors.white38),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  OutlinedButton.icon(
+                                    onPressed: _pickFromCamera,
+                                    icon: const Icon(Icons.photo_camera),
+                                    label: const Text('Kamera'),
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: Colors.white,
+                                      side: const BorderSide(color: Colors.white38),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
                   ),
-                  SizedBox(height: 30),
+
+                  const SizedBox(height: 30),
+
+                  // ========= BUTTONS =========
                   Row(
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      _formButton(context, 'Cancel', Colors.grey, () => Navigator.pop(context)),
-                      SizedBox(width: 12),
+                      _formButton(context, 'Cancel', Colors.grey, () {
+                        Navigator.pop(context, false);
+                      }),
+                      const SizedBox(width: 12),
                       _formButton(context, 'Create', Colors.blue, () {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(builder: (_) => CustomerScreen()),
-                        );
+                        // TODO: kirim _photos + data form ke API
+                        Navigator.pop(context, true);
                       }),
                     ],
-                  )
+                  ),
                 ],
               );
             },
           ),
         ),
       ),
-
-      // ✅ Bottom Navigation Bar
-      bottomNavigationBar: Container(
-        color: Colors.grey[200],
-        padding: EdgeInsets.symmetric(vertical: 12, horizontal: 20),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _navItem(Icons.home, 'Home', onPressed: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => HomeScreen()));
-            }),
-            _navItem(Icons.shopping_cart, 'Create Order', onPressed: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => CreateSalesOrderScreen()));
-            }),
-            _navItem(Icons.person, 'Profile', onPressed: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => ProfileScreen()));
-            }),
-          ],
-        ),
-      ),
     );
   }
 
+  // ===== Helpers (styling seragam gelap) =====
   Widget _buildTextField(String label, double width, {int maxLines = 1}) {
     return SizedBox(
       width: width,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: TextStyle(color: Colors.white)),
-          SizedBox(height: 6),
+          Text(label, style: const TextStyle(color: Colors.white)),
+          const SizedBox(height: 6),
           TextFormField(
             maxLines: maxLines,
-            style: TextStyle(color: Colors.white),
+            style: const TextStyle(color: Colors.white),
             decoration: InputDecoration(
               filled: true,
-              fillColor: Colors.grey[800],
+              fillColor: const Color(0xFF22344C),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
             ),
           ),
         ],
@@ -150,20 +297,20 @@ class CreateCustomerScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: TextStyle(color: Colors.white)),
-          SizedBox(height: 6),
+          Text(label, style: const TextStyle(color: Colors.white)),
+          const SizedBox(height: 6),
           DropdownButtonFormField<String>(
             items: options.map((opt) => DropdownMenuItem(value: opt, child: Text(opt))).toList(),
-            onChanged: (val) {},
+            onChanged: (_) {},
             decoration: InputDecoration(
               filled: true,
-              fillColor: Colors.grey[800],
+              fillColor: const Color(0xFF22344C),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
             ),
             dropdownColor: Colors.grey[900],
             iconEnabledColor: Colors.white,
-            style: TextStyle(color: Colors.white),
+            style: const TextStyle(color: Colors.white),
           ),
         ],
       ),
@@ -173,26 +320,12 @@ class CreateCustomerScreen extends StatelessWidget {
   Widget _formButton(BuildContext context, String text, Color color, VoidCallback onPressed) {
     return ElevatedButton(
       onPressed: onPressed,
-      child: Text(text),
       style: ElevatedButton.styleFrom(
         backgroundColor: color,
         foregroundColor: Colors.white,
-        padding: EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
       ),
-    );
-  }
-
-  Widget _navItem(IconData icon, String label, {VoidCallback? onPressed}) {
-    return InkWell(
-      onTap: onPressed,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: Colors.black),
-          SizedBox(height: 4),
-          Text(label, style: TextStyle(color: Colors.black)),
-        ],
-      ),
+      child: Text(text),
     );
   }
 }

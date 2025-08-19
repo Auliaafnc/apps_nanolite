@@ -3,6 +3,7 @@
 namespace App\Filament\Admin\Resources;
 
 use App\Filament\Admin\Resources\CustomerResource\Pages;
+use App\Filament\Admin\Resources\CustomerResource\Api\Transformers\CustomerTransformer;
 use App\Models\Customer;
 use App\Models\PostalCode;
 use App\Models\Employee;
@@ -51,6 +52,11 @@ class CustomerResource extends Resource
     protected static ?string $recordTitleAttribute = 'name';
 
     protected static ?int $navigationSort = 3;
+
+    public static function getApiTransformer()
+    {
+        return CustomerTransformer::class;
+    }
 
     public static function getNavigationBadge(): ?string
     {

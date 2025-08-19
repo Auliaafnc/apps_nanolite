@@ -2,17 +2,21 @@ import 'package:flutter/material.dart';
 import 'package:apps_nanolite/pages/home.dart';
 
 import 'login.dart';
+import 'create_sales_order.dart';
+import 'sales_order.dart';
 
 class ProfileScreen extends StatelessWidget {
+  const ProfileScreen({super.key}); // <-- penting biar bisa dipanggil const
+
   @override
   Widget build(BuildContext context) {
     final bool isTablet = MediaQuery.of(context).size.width >= 600;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF061F3D), // Warna latar belakang disamakan
+      backgroundColor: const Color(0xFF0A1B2D),
       appBar: AppBar(
-        title: const Text('Profile', style: TextStyle(color: Colors.black)),
-        backgroundColor: Colors.grey[200], // Warna AppBar disamakan
+        title: const Text('nanopiko', style: TextStyle(color: Colors.black)),
+        backgroundColor: Colors.grey[200],
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
@@ -25,106 +29,146 @@ class ProfileScreen extends StatelessWidget {
         ),
       ),
       body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: <Widget>[
-              // Avatar
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.3),
-                      spreadRadius: 3,
-                      blurRadius: 10,
-                      offset: const Offset(0, 3),
+        child: Column(
+          children: [
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                ClipPath(
+                  clipper: const TopCurveClipper(), // <-- const
+                  child: Container(
+                    height: 180,
+                    color: Colors.grey[300],
+                  ),
+                ),
+                Transform.translate(
+                  offset: const Offset(0, 60),
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: Colors.white,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.3),
+                          spreadRadius: 3,
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
                     ),
-                  ],
+                    child: CircleAvatar(
+                      radius: isTablet ? 80 : 60,
+                      backgroundImage: const AssetImage('assets/images/avatar.jpg'),
+                    ),
+                  ),
                 ),
-                child: CircleAvatar(
-                  radius: isTablet ? 80 : 60,
-                  backgroundImage: const AssetImage('assets/images/avatar.jpg'),
-                ),
-              ),
-              const SizedBox(height: 20),
+              ],
+            ),
 
-              // Name and Title
-              Text(
-                'SALES',
-                style: TextStyle(
-                  fontSize: isTablet ? 26 : 22,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                'Karina Indah Puspa',
-                style: TextStyle(
-                  fontSize: isTablet ? 22 : 18,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(height: 20),
+            const SizedBox(height: 80),
 
-              // Statistik
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: <Widget>[
-                  _buildStatCard('Pengajuan', '0', isTablet),
-                  _buildStatCard('Disetujui', '0', isTablet),
-                  _buildStatCard('Ditolak', '0', isTablet),
-                ],
+            Text(
+              'SALES',
+              style: TextStyle(
+                fontSize: isTablet ? 26 : 22,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
               ),
-              const SizedBox(height: 20),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Karina Indah Puspa',
+              style: TextStyle(
+                fontSize: isTablet ? 22 : 18,
+                color: Colors.white,
+              ),
+            ),
+            const SizedBox(height: 20),
 
-              // Informasi user
-              Container(
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 40),
+              child: Container(
+                width: double.infinity,
                 padding: EdgeInsets.all(isTablet ? 20 : 15),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(15),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    _buildUserInfo('Branch', 'Cengkareng', isTablet),
-                    _buildUserInfo('Email', 'karina@gmail.com', isTablet),
-                    _buildUserInfo('Phone', '0123456', isTablet),
-                    _buildUserInfo('Department', 'Sales', isTablet),
-                    _buildUserInfo('Status', 'Active', isTablet),
-                    _buildUserInfo('Address', 'Jl. Raya Sudirman, RT 01 / RW 01, 1678', isTablet),
+                  children: [
+                    _buildLabelValue('Departemen', 'Sales', isTablet),
+                    _buildLabelValue('Email', 'karina@gmail.com', isTablet),
+                    _buildLabelValue('Phone', '0123456', isTablet),
+                    _buildLabelValue('Status', 'Active', isTablet),
+                    _buildLabelValue('Address', 'Jl. Raya Sudirman, RT 01 / RW 01, 1678', isTablet),
                   ],
                 ),
               ),
-              const SizedBox(height: 30),
+            ),
 
-              // Tombol Logout
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.pushReplacement(
-                    context,
-                    MaterialPageRoute(builder: (context) => LoginScreen()),
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  padding: EdgeInsets.symmetric(
-                    horizontal: isTablet ? 120 : 100,
-                    vertical: isTablet ? 18 : 15,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
-                  ),
+            const SizedBox(height: 30),
+
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (context) => LoginScreen()),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white,
+                foregroundColor: const Color(0xFF061F3D),
+                padding: EdgeInsets.symmetric(
+                  horizontal: isTablet ? 120 : 100,
+                  vertical: isTablet ? 18 : 15,
                 ),
-                child: Text(
-                  'Logout',
-                  style: TextStyle(fontSize: isTablet ? 20 : 18),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
               ),
+              child: Text('Logout', style: TextStyle(fontSize: isTablet ? 20 : 18)),
+            ),
+
+            const SizedBox(height: 40),
+          ],
+        ),
+      ),
+
+      bottomNavigationBar: Container(
+        color: const Color(0xFF0A1B2D),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.grey[300],
+            borderRadius: BorderRadius.circular(40),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _navItem(context, Icons.home, 'Home', () {
+                Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => HomeScreen()));
+              }),
+              _navItem(context, Icons.shopping_cart, 'Create Order', () async {
+                final created = await Navigator.push<bool>(
+                  context,
+                  MaterialPageRoute(builder: (_) => const CreateSalesOrderScreen()), // <-- const
+                );
+                if (created == true) {
+                  if (!context.mounted) return;
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => SalesOrderScreen(showCreatedSnack: true),
+                    ),
+                  );
+                }
+              }),
+              _navItem(context, Icons.person, 'Profile', () {
+                // stay
+              }),
             ],
           ),
         ),
@@ -132,75 +176,65 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  // Kartu statistik
-  Widget _buildStatCard(String label, String value, bool isTablet) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+  Widget _navItem(BuildContext context, IconData icon, String label, VoidCallback onPressed) {
+    final bool isTablet = MediaQuery.of(context).size.shortestSide >= 600;
+    final double iconSize = isTablet ? 32 : 28;
+    final double fontSize = isTablet ? 14 : 12;
+
+    return InkWell(
+      onTap: onPressed,
       child: Column(
-        children: <Widget>[
-          Container(
-            padding: EdgeInsets.all(isTablet ? 14 : 10),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.2),
-                  spreadRadius: 1,
-                  blurRadius: 3,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Text(
-              value,
-              style: TextStyle(
-                fontSize: isTablet ? 20 : 16,
-                color: const Color(0xFF061F3D), // warna biru tua
-              ),
-            ),
-          ),
-          const SizedBox(height: 5),
-          Text(
-            label,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: isTablet ? 16 : 14,
-            ),
-          ),
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: iconSize, color: const Color(0xFF0A1B2D)),
+          const SizedBox(height: 4),
+          Text(label, style: TextStyle(color: const Color(0xFF0A1B2D), fontSize: fontSize)),
         ],
       ),
     );
   }
 
-  // Info pengguna
-  Widget _buildUserInfo(String title, String value, bool isTablet) {
+  Widget _buildLabelValue(String label, String value, bool isTablet) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 10.0),
-      child: Row(
-        children: <Widget>[
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
           Text(
-            title,
+            label,
             style: TextStyle(
-              fontSize: isTablet ? 16 : 14,
               fontWeight: FontWeight.bold,
-              color: const Color(0xFF061F3D), // biru gelap
+              color: Color(0xFF061F3D),
+              fontSize: isTablet ? 16 : 14,
             ),
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              value,
-              style: TextStyle(
-                fontSize: isTablet ? 16 : 14,
-                color: Colors.black,
-              ),
-              overflow: TextOverflow.ellipsis,
+          const SizedBox(height: 2),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: isTablet ? 16 : 14,
+              color: Colors.black87,
             ),
           ),
         ],
       ),
     );
   }
+}
+
+class TopCurveClipper extends CustomClipper<Path> {
+  const TopCurveClipper(); // <-- bikin const
+
+  @override
+  Path getClip(Size size) {
+    final Path path = Path();
+    path.lineTo(0, size.height - 60);
+    path.quadraticBezierTo(size.width / 2, size.height, size.width, size.height - 60);
+    path.lineTo(size.width, 0);
+    path.close();
+    return path;
+  }
+
+  @override
+  bool shouldReclip(CustomClipper<Path> oldClipper) => false;
 }

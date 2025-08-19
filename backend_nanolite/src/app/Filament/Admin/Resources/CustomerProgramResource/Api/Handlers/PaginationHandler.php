@@ -3,52 +3,28 @@
 namespace App\Filament\Admin\Resources\CustomerProgramResource\Api\Handlers;
 
 use App\Filament\Admin\Resources\CustomerProgramResource;
-use App\Models\CustomerProgram;
+use App\Support\ApiPaging;
 use Rupadana\ApiService\Http\Handlers;
 use Spatie\QueryBuilder\QueryBuilder;
+use App\Filament\Admin\Resources\CustomerProgramResource\Api\Transformers\CustomerProgramTransformer;
 
 class PaginationHandler extends Handlers
 {
+    use ApiPaging;
+
     public static ?string $uri = '/';
     public static ?string $resource = CustomerProgramResource::class;
 
     public function handler()
     {
-        $query = QueryBuilder::for(static::getModel())
-            ->allowedFilters(['name', 'deskripsi'])
-            ->with([
-                'company',
-                'customerCategories',
-                'customers',
-                'employees',
-                'orders',
-            ])
-            ->withCount([
-                'customerCategories',
-                'customers',
-                'employees',
-                'orders',
-            ])
-            ->paginate(request()->query('per_page', 10))
-            ->appends(request()->query());
+        $paginator = QueryBuilder::for(static::getModel())
+            ->allowedFilters(['name','deskripsi'])
+            ->with(['company','customerCategories','customers','employees','orders'])
+            ->withCount(['customerCategories','customers','employees','orders'])
+            ->paginate($this->perPage(request()))
+            ->appends(request()->query())
+            ->through(fn ($prog) => new CustomerProgramTransformer($prog));
 
-        $query->getCollection()->transform(function (CustomerProgram $program) {
-            return array_merge(
-                $program->toArray(),
-                [
-                    'company_name'     => $program->company?->name,
-                    'category_names'   => $program->customerCategories->pluck('name')->toArray(),
-                    'customers'        => $program->customers,
-                    'employees'        => $program->employees,
-                    'orders'           => $program->orders,
-                    'total_customers'  => $program->customers_count,
-                    'total_employees'  => $program->employees_count,
-                    'total_orders'     => $program->orders_count,
-                    'total_categories' => $program->customerCategories_count,
-                ]
-            );
-        });
-
-        return static::sendSuccessResponse($query, 'Customer Programs List Retrieved Successfully');
+        return static::sendSuccessResponse($paginator, 'Customer programs list retrieved successfully');
     }
 }

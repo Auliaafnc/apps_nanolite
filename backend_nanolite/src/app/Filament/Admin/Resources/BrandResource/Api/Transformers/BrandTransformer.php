@@ -1,23 +1,29 @@
 <?php
+
 namespace App\Filament\Admin\Resources\BrandResource\Api\Transformers;
 
 use Illuminate\Http\Resources\Json\JsonResource;
-use App\Models\Brand;
+use Illuminate\Support\Facades\Storage;
 
-/**
- * @property Brand $resource
- */
 class BrandTransformer extends JsonResource
 {
-
-    /**
-     * Transform the resource into an array.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return array
-     */
-    public function toArray($request)
+    public function toArray($request): array
     {
-        return $this->resource->toArray();
+        $this->resource->loadMissing(['company:id,name', 'categories:id,brand_id', 'products:id,brand_id']);
+
+        $status = $this->status === 'active' ? 'Aktif' : 'Nonaktif';
+
+        return [
+            'id'               => $this->id,
+            'company'          => $this->company?->name,
+            'name'             => $this->name,
+            'deskripsi'        => $this->deskripsi,
+            'status'           => $status,
+            'image'            => $this->image ? Storage::url($this->image) : null,
+            'categories_count' => $this->categories?->count() ?? 0,
+            'products_count'   => $this->products?->count() ?? 0,
+            'created_at'       => optional($this->created_at)->format('d/m/Y'),
+            'updated_at'       => optional($this->updated_at)->format('d/m/Y'),
+        ];
     }
 }

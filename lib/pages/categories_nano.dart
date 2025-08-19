@@ -6,12 +6,13 @@ import 'create_sales_order.dart';
 import 'emergency.dart';
 import 'home.dart';
 import 'profile.dart';
+import 'sales_order.dart'; // ⬅️ tambahkan ini
 
 class CategoriesNanoScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF061F3D),
+      backgroundColor: const Color(0xFF0A1B2D),
       appBar: AppBar(
         backgroundColor: Colors.grey[200],
         elevation: 0,
@@ -21,9 +22,9 @@ class CategoriesNanoScreen extends StatelessWidget {
         ),
         title: const Row(
           children: [
-            Icon(Icons.shopping_basket, color: Colors.black),
+            Icon(Icons.lightbulb, color: Colors.black),
             SizedBox(width: 8),
-            Text('Categories', style: TextStyle(color: Colors.black)),
+            Text('Nanolite', style: TextStyle(color: Colors.black)),
           ],
         ),
       ),
@@ -67,23 +68,45 @@ class CategoriesNanoScreen extends StatelessWidget {
         ),
       ),
 
-      // ✅ Bottom Navigation Bar
+      // ===== Bottom Navigation: sama persis seperti Home =====
       bottomNavigationBar: Container(
-        color: Colors.grey[200],
+        color: const Color(0xFF0A1B2D),
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _navItem(Icons.home, 'Home', onPressed: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => HomeScreen()));
-            }),
-            _navItem(Icons.shopping_cart, 'Create Order', onPressed: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => CreateSalesOrderScreen()));
-            }),
-            _navItem(Icons.person, 'Profile', onPressed: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => ProfileScreen()));
-            }),
-          ],
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.grey[300],
+            borderRadius: BorderRadius.circular(40),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _navItem(context, Icons.home, 'Home', onPressed: () {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (_) => HomeScreen()),
+                );
+              }),
+              _navItem(context, Icons.shopping_cart, 'Create Order', onPressed: () async {
+                final created = await Navigator.push<bool>(
+                  context,
+                  MaterialPageRoute(builder: (_) => CreateSalesOrderScreen()),
+                );
+                if (created == true) {
+                  if (!context.mounted) return;
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => SalesOrderScreen(showCreatedSnack: true),
+                    ),
+                  );
+                }
+              }),
+              _navItem(context, Icons.person, 'Profile', onPressed: () {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => ProfileScreen()));
+              }),
+            ],
+          ),
         ),
       ),
     );
@@ -122,7 +145,7 @@ class CategoriesNanoScreen extends StatelessWidget {
       },
       child: Container(
         decoration: BoxDecoration(
-          color: const Color(0xFF12355C), // 🔵 Lebih muda dari background, tapi tetap gelap
+          color: const Color(0xFF12355C),
           borderRadius: BorderRadius.circular(12),
         ),
         padding: const EdgeInsets.all(10),
@@ -161,15 +184,20 @@ class CategoriesNanoScreen extends StatelessWidget {
     );
   }
 
-  Widget _navItem(IconData icon, String label, {VoidCallback? onPressed}) {
+  // Versi nav item yang responsif (ikon & font) sama seperti Home
+  Widget _navItem(BuildContext context, IconData icon, String label, {VoidCallback? onPressed}) {
+    final bool isTablet = MediaQuery.of(context).size.shortestSide >= 600;
+    final double iconSize = isTablet ? 32 : 28;
+    final double fontSize = isTablet ? 14 : 12;
+
     return InkWell(
       onTap: onPressed,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: Colors.black),
+          Icon(icon, size: iconSize, color: const Color(0xFF0A1B2D)),
           const SizedBox(height: 4),
-          Text(label, style: const TextStyle(color: Colors.black)),
+          Text(label, style: TextStyle(color: const Color(0xFF0A1B2D), fontSize: fontSize)),
         ],
       ),
     );

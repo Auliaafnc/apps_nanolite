@@ -4,12 +4,13 @@ import 'abulb.dart';
 import 'create_sales_order.dart';
 import 'home.dart';
 import 'profile.dart';
+import 'sales_order.dart'; // ⬅️ penting untuk navigasi setelah create
 
 class CategoriesPikoScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF061F3D),
+      backgroundColor: const Color(0xFF0A1B2D),
       appBar: AppBar(
         title: Row(
           children: const [
@@ -78,22 +79,45 @@ class CategoriesPikoScreen extends StatelessWidget {
         ),
       ),
 
+      // ===== Bottom Navigation: sama persis seperti Home =====
       bottomNavigationBar: Container(
-        color: Colors.grey[200],
+        color: const Color(0xFF0A1B2D),
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _navItem(Icons.home, 'Home', onPressed: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => HomeScreen()));
-            }),
-            _navItem(Icons.shopping_cart, 'Create Order', onPressed: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => CreateSalesOrderScreen()));
-            }),
-            _navItem(Icons.person, 'Profile', onPressed: () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => ProfileScreen()));
-            }),
-          ],
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.grey[300],
+            borderRadius: BorderRadius.circular(40),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _navItem(context, Icons.home, 'Home', onPressed: () {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(builder: (_) => HomeScreen()),
+                );
+              }),
+              _navItem(context, Icons.shopping_cart, 'Create Order', onPressed: () async {
+                final created = await Navigator.push<bool>(
+                  context,
+                  MaterialPageRoute(builder: (_) => CreateSalesOrderScreen()),
+                );
+                if (created == true) {
+                  if (!context.mounted) return;
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => SalesOrderScreen(showCreatedSnack: true),
+                    ),
+                  );
+                }
+              }),
+              _navItem(context, Icons.person, 'Profile', onPressed: () {
+                Navigator.push(context, MaterialPageRoute(builder: (_) => ProfileScreen()));
+              }),
+            ],
+          ),
         ),
       ),
     );
@@ -107,7 +131,7 @@ class CategoriesPikoScreen extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Card(
-        color: const Color(0xFF12355C), // Warna baru: sedikit lebih terang dari background
+        color: const Color(0xFF12355C),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
         ),
@@ -151,15 +175,20 @@ class CategoriesPikoScreen extends StatelessWidget {
     );
   }
 
-  Widget _navItem(IconData icon, String label, {VoidCallback? onPressed}) {
+  // Versi nav item yang responsif (ikon & font) sama seperti Home
+  Widget _navItem(BuildContext context, IconData icon, String label, {VoidCallback? onPressed}) {
+    final bool isTablet = MediaQuery.of(context).size.shortestSide >= 600;
+    final double iconSize = isTablet ? 32 : 28;
+    final double fontSize = isTablet ? 14 : 12;
+
     return InkWell(
       onTap: onPressed,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: Colors.black),
+          Icon(icon, size: iconSize, color: const Color(0xFF0A1B2D)),
           const SizedBox(height: 4),
-          Text(label, style: const TextStyle(color: Colors.black)),
+          Text(label, style: TextStyle(color: const Color(0xFF0A1B2D), fontSize: fontSize)),
         ],
       ),
     );

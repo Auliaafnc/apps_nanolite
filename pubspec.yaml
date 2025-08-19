@@ -38,6 +38,8 @@ dependencies:
   google_fonts: ^3.0.1
   http: ^0.13.5
   shared_preferences: ^2.2.2
+  image_picker: ^1.0.7
+  url_launcher: ^6.3.0
 
 dev_dependencies:
   flutter_test:
@@ -68,7 +70,6 @@ flutter:
 
   assets:
   - assets/images/nanolite_pikolite_logo.png
-  - assets/images/banner.png
   - assets/images/50m1.png
   - assets/images/bulb.png
   - assets/images/capsule.png
@@ -97,6 +98,10 @@ flutter:
   - assets/images/emergency.jpg
   - assets/images/emerspek.jpg
   - assets/images/emerkomp.jpg
+  - assets/images/bannernanolite1.png
+  - assets/images/bannerpikooo.jpg
+  - assets/images/bannernanolite.jpg
+  - assets/images/bannerpikolite.jpg
 
   # To add assets to your application, add an assets section, like this:
   # assets:

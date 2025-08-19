@@ -3,42 +3,28 @@
 namespace App\Filament\Admin\Resources\BrandResource\Api\Handlers;
 
 use App\Filament\Admin\Resources\BrandResource;
-use App\Models\Brand;
+use App\Support\ApiPaging;
 use Rupadana\ApiService\Http\Handlers;
 use Spatie\QueryBuilder\QueryBuilder;
+use App\Filament\Admin\Resources\BrandResource\Api\Transformers\BrandTransformer;
 
 class PaginationHandler extends Handlers
 {
+    use ApiPaging;
+
     public static ?string $uri = '/';
     public static ?string $resource = BrandResource::class;
 
     public function handler()
     {
-        $query = QueryBuilder::for(static::getModel())
+        $paginator = QueryBuilder::for(static::getModel())
             ->allowedFilters(['name', 'deskripsi'])
-            ->with([
-                'company',
-                'categories',
-                'products',
-            ])
-            ->withCount([
-                'categories',
-                'products',
-            ])
-            ->paginate(request()->query('per_page', 10))
-            ->appends(request()->query());
+            ->with(['company','categories','products'])
+            ->withCount(['categories','products'])
+            ->paginate($this->perPage(request()))
+            ->appends(request()->query())
+            ->through(fn ($brand) => new BrandTransformer($brand));
 
-        $query->getCollection()->transform(function (Brand $brand) {
-            return array_merge(
-                $brand->toArray(),
-                [
-                    'company_name'     => $brand->company?->name,
-                    'total_categories' => $brand->categories_count,
-                    'total_products'   => $brand->products_count,
-                ]
-            );
-        });
-
-        return static::sendSuccessResponse($query, 'Brand List Retrieved Successfully');
+        return static::sendSuccessResponse($paginator, 'Brand list retrieved successfully');
     }
 }
