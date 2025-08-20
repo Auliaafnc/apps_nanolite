@@ -1,52 +1,53 @@
+// lib/pages/multipiko.dart
 import 'package:flutter/material.dart';
 
+import 'categories_piko.dart';
 import 'create_sales_order.dart';
 import 'home.dart';
 import 'profile.dart';
+import 'sales_order.dart'; // <-- untuk flow setelah create
 
-class MultipackPage extends StatelessWidget {
-  const MultipackPage({super.key});
+class MultipackPikoPage extends StatelessWidget {
+  const MultipackPikoPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // Palet seperti Bulb
+    // === PALETTE: samakan dengan Bulb/TBulb ===
     const Color bgPage = Color(0xFF0A1B2D);
     const Color headerLight = Color(0xFFE9ECEF);
     const Color blue6500 = Color(0xFF1EA7FF);
-    const Color cardDark = Color(0xFF0F2741);
+    const Color cardDark = Color(0xFF0F2741); // panel kontras agar radius terlihat
 
-    final bool isTablet = MediaQuery.of(context).size.width >= 600;
+    final size = MediaQuery.of(context).size;
+    final bool isTablet = size.width >= 600;
     final double hPad = isTablet ? 24 : 16;
     final double vPad = isTablet ? 18 : 12;
 
+    // Brand chip abu-abu (ikon & teks hitam)
     Widget brandChip() => Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(24)),
           child: const Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.lightbulb, color: Colors.black),
+              Icon(Icons.lightbulb_outline, color: Colors.black),
               SizedBox(width: 8),
-              Text('Nanolite', style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600)),
+              Text('Pikolite', style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600)),
             ],
           ),
         );
 
+    // HERO image: panel gelap + sudut melengkung
     Widget productImage() => ClipRRect(
           borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
           child: Container(
-            color: cardDark,
+            decoration: const BoxDecoration(color: cardDark),
             padding: const EdgeInsets.all(16),
-            child: Center(
-              child: Image.asset(
-                'assets/images/multipack.jpg',
-                width: isTablet ? 320 : 240,
-                fit: BoxFit.contain,
-              ),
-            ),
+            child: Image.asset('assets/images/multipikko.jpg', height: isTablet ? 260 : 210, fit: BoxFit.contain),
           ),
         );
 
+    // (dummy card – tidak dipakai langsung)
     Widget specCard() {
       Widget header = Container(
         width: double.infinity,
@@ -60,48 +61,36 @@ class MultipackPage extends StatelessWidget {
         ),
       );
 
-      Widget row(String l, String r) => Padding(
-            padding: const EdgeInsets.symmetric(vertical: 6),
-            child: RichText(
-              text: TextSpan(
-                style: const TextStyle(color: Colors.black87, fontSize: 14, height: 1.4),
-                children: [
-                  TextSpan(text: '$l: ', style: const TextStyle(fontWeight: FontWeight.w800)),
-                  TextSpan(text: r, style: const TextStyle(fontWeight: FontWeight.w600)),
-                ],
-              ),
-            ),
-          );
-
       return Container(
         decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
         child: Padding(
           padding: const EdgeInsets.only(bottom: 14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              header,
-              const SizedBox(height: 6),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    row('Tahan Sampai', '25.000 Jam'),
-                    row('Fitting', 'E27'),
-                    row('Hemat Energi', '90%'),
-                    row('LED', 'Samsung'),
-                    row('Tegangan', '110–240V'),
-                  ],
-                ),
-              ),
+            children: const [
+              SizedBox(height: 0, child: SizedBox.shrink()),
             ],
           ),
         ),
       );
     }
 
-    // builder sel tabel (gaya Bulb)
+    // helper row untuk spesifikasi
+    Widget specRows() => Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: const [
+              _SpecRow(label: 'Tahan Sampai', value: '25.000 Jam'),
+              _SpecRow(label: 'Fitting', value: 'E27'),
+              _SpecRow(label: 'Hemat Energi', value: '90%'),
+              _SpecRow(label: 'LED', value: 'Samsung'),
+              _SpecRow(label: 'Tegangan', value: '110–240V'),
+            ],
+          ),
+        );
+
+    // ====== TABLE builders (gaya ABulb/TBulb) ======
     Widget th(String t) => ConstrainedBox(
           constraints: const BoxConstraints(minHeight: 44),
           child: Container(
@@ -110,11 +99,10 @@ class MultipackPage extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 8),
             child: Text(t,
                 textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w700, height: 1.1)),
           ),
         );
+
     Widget td(String t) => ConstrainedBox(
           constraints: const BoxConstraints(minHeight: 42),
           child: Container(
@@ -125,6 +113,7 @@ class MultipackPage extends StatelessWidget {
                 style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, height: 1.1)),
           ),
         );
+
     Widget tdBlue(String t) => ConstrainedBox(
           constraints: const BoxConstraints(minHeight: 42),
           child: Container(
@@ -135,33 +124,28 @@ class MultipackPage extends StatelessWidget {
           ),
         );
 
-    // Tabel varian (8 kolom — seperti Bulb style)
+    // ====== TABLE data & layout ======
     Widget specTable() {
-      // Watt | Lumen | Tinggi | Diameter | Harga | Warna | Keterangan | Isi/Dus
       const rows = [
-        ['5 Watt', '600 lm', '105 mm', '55 mm', 'Rp 71.900', '6500K', 'Cahaya Putih Kebiruan', '24 Pack'],
-        ['12 Watt', '1440 lm', '125.5 mm', '65 mm', 'Rp 130.900', '6500K', 'Cahaya Putih Kebiruan', '24 Pack'],
+        ['5 Watt',  '55mm x 102mm', 'Rp 45.900', '6500K', 'Cahaya Putih Kebiruan'],
+        ['7 Watt',  '59mm x 115mm', 'Rp 51.900', '6500K', 'Cahaya Putih Kebiruan'],
+        ['9 Watt',  '59mm x 115mm', 'Rp 59.900', '6500K', 'Cahaya Putih Kebiruan'],
+        ['12 Watt', '64mm x 123mm', 'Rp 68.900', '6500K', 'Cahaya Putih Kebiruan'],
       ];
 
       const phoneWidths = <int, TableColumnWidth>{
-        0: FixedColumnWidth(120),
-        1: FixedColumnWidth(110),
-        2: FixedColumnWidth(100),
-        3: FixedColumnWidth(100),
-        4: FixedColumnWidth(130),
-        5: FixedColumnWidth(100),
-        6: FixedColumnWidth(200),
-        7: FixedColumnWidth(110),
+        0: FixedColumnWidth(140),
+        1: FixedColumnWidth(220),
+        2: FixedColumnWidth(160),
+        3: FixedColumnWidth(110),
+        4: FixedColumnWidth(240),
       };
       final tabletWidths = <int, TableColumnWidth>{
-        0: const FlexColumnWidth(1.0),
-        1: const FlexColumnWidth(0.9),
-        2: const FlexColumnWidth(0.9),
+        0: const FlexColumnWidth(1.1),
+        1: const FlexColumnWidth(1.6),
+        2: const FlexColumnWidth(1.2),
         3: const FlexColumnWidth(0.9),
-        4: const FlexColumnWidth(1.2),
-        5: const FlexColumnWidth(0.9),
-        6: const FlexColumnWidth(1.6),
-        7: const FlexColumnWidth(0.9),
+        4: const FlexColumnWidth(1.7),
       };
 
       final table = Table(
@@ -173,23 +157,21 @@ class MultipackPage extends StatelessWidget {
         ),
         children: [
           TableRow(children: [
-            th('Watt'),
-            th('Lumen'),
-            th('Tinggi'),
-            th('Diameter'),
+            th('Varian Watt'),
+            th('Dimensi Produk'),
             th('Harga'),
             th('Warna'),
             th('Keterangan'),
-            th('Isi/Dus'),
           ]),
           for (final r in rows)
             TableRow(
               decoration: const BoxDecoration(color: bgPage),
-              children: [td(r[0]), td(r[1]), td(r[2]), td(r[3]), td(r[4]), tdBlue(r[5]), td(r[6]), td(r[7])],
+              children: [td(r[0]), td(r[1]), td(r[2]), tdBlue(r[3]), td(r[4])],
             ),
         ],
       );
 
+      // panel tabel dibungkus ClipRRect supaya sudut melengkung terlihat
       return ClipRRect(
         borderRadius: BorderRadius.circular(12),
         child: Container(
@@ -199,24 +181,13 @@ class MultipackPage extends StatelessWidget {
               ? table
               : SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(minWidth: 1070),
-                    child: table,
-                  ),
+                  child: ConstrainedBox(constraints: const BoxConstraints(minWidth: 870), child: table),
                 ),
         ),
       );
     }
 
-    Widget roundedImage(String path, double h) => ClipRRect(
-          borderRadius: BorderRadius.circular(16),
-          child: Container(
-            color: cardDark,
-            padding: const EdgeInsets.all(12),
-            child: Image.asset(path, height: h, fit: BoxFit.contain),
-          ),
-        );
-
+    // ---- PAGE ----
     return Scaffold(
       backgroundColor: bgPage,
       appBar: AppBar(
@@ -224,9 +195,19 @@ class MultipackPage extends StatelessWidget {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            if (Navigator.of(context).canPop()) {
+              Navigator.of(context).pop();
+            } else {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => CategoriesPikoScreen()),
+              );
+            }
+          },
         ),
-        title: const Text('nanopiko', style: TextStyle(color: Colors.black)),
+        title: const Text('pikolite', style: TextStyle(color: Colors.black)),
+        centerTitle: false,
       ),
       body: ListView(
         padding: EdgeInsets.fromLTRB(hPad, vPad, hPad, vPad + 16),
@@ -236,39 +217,77 @@ class MultipackPage extends StatelessWidget {
           Text('Product Multipack',
               style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: isTablet ? 18 : 16)),
           SizedBox(height: vPad),
+
+          // HERO (row di tablet, stack di HP)
           LayoutBuilder(builder: (context, c) {
             final row = isTablet && c.maxWidth >= 680;
             final img = productImage();
-            final spec = specCard();
-            if (row) return Row(children: [Expanded(child: img), const SizedBox(width: 16), Expanded(child: spec)]);
+
+            final spec = Container(
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: double.infinity,
+                    height: 42,
+                    decoration: const BoxDecoration(
+                      color: headerLight,
+                      borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+                    ),
+                    child: const Center(
+                      child: Text('SPESIFIKASI',
+                          style: TextStyle(fontWeight: FontWeight.w700, color: Colors.black)),
+                    ),
+                  ),
+                  specRows(),
+                ],
+              ),
+            );
+
+            if (row) {
+              return Row(children: [Expanded(child: img), const SizedBox(width: 16), Expanded(child: spec)]);
+            }
             return Column(children: [img, const SizedBox(height: 12), spec]);
           }),
+
           SizedBox(height: vPad),
+
+          // TABLE
           specTable(),
-          SizedBox(height: vPad * 1.5),
-          LayoutBuilder(builder: (context, c) {
-            final twoCols = isTablet && c.maxWidth >= 680;
-            final left = roundedImage('assets/images/nanobulbspek.png', isTablet ? 220 : 170);
-            final right = roundedImage('assets/images/productkomp.png', isTablet ? 220 : 170);
-            if (twoCols) return Row(children: [Expanded(child: left), const SizedBox(width: 16), Expanded(child: right)]);
-            return Column(children: [left, const SizedBox(height: 12), right]);
-          }),
         ],
       ),
+
+      // ===== Bottom Navigation: disamakan persis dengan Home =====
       bottomNavigationBar: Container(
         color: bgPage,
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(40)),
+          decoration: BoxDecoration(
+            color: Colors.grey[300],
+            borderRadius: BorderRadius.circular(40),
+          ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _navItem(context, Icons.home, 'Home', onPressed: () {
                 Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => HomeScreen()));
               }),
-              _navItem(context, Icons.shopping_cart, 'Create Order', onPressed: () {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => CreateSalesOrderScreen()));
+              _navItem(context, Icons.shopping_cart, 'Create Order', onPressed: () async {
+                final created = await Navigator.push<bool>(
+                  context,
+                  MaterialPageRoute(builder: (_) => CreateSalesOrderScreen()),
+                );
+                if (created == true) {
+                  if (!context.mounted) return;
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => SalesOrderScreen(showCreatedSnack: true),
+                    ),
+                  );
+                }
               }),
               _navItem(context, Icons.person, 'Profile', onPressed: () {
                 Navigator.push(context, MaterialPageRoute(builder: (_) => ProfileScreen()));
@@ -280,6 +299,7 @@ class MultipackPage extends StatelessWidget {
     );
   }
 
+  // ==== Helper: nav item (ukuran adaptif seperti di Home) ====
   Widget _navItem(BuildContext context, IconData icon, String label, {VoidCallback? onPressed}) {
     final bool isTablet = MediaQuery.of(context).size.shortestSide >= 600;
     final double iconSize = isTablet ? 32 : 28;
@@ -294,6 +314,28 @@ class MultipackPage extends StatelessWidget {
           const SizedBox(height: 4),
           Text(label, style: TextStyle(color: const Color(0xFF0A1B2D), fontSize: fontSize)),
         ],
+      ),
+    );
+  }
+}
+
+class _SpecRow extends StatelessWidget {
+  final String label;
+  final String value;
+  const _SpecRow({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: RichText(
+        text: TextSpan(
+          style: const TextStyle(fontSize: 14, color: Colors.black87, height: 1.4),
+          children: [
+            TextSpan(text: '$label: ', style: const TextStyle(fontWeight: FontWeight.w800)),
+            TextSpan(text: value, style: const TextStyle(fontWeight: FontWeight.w600)),
+          ],
+        ),
       ),
     );
   }

@@ -128,36 +128,43 @@ class _CustomerScreenState extends State<CustomerScreen> {
                   ],
                   const SizedBox(height: 16),
 
+                  // --- Pull-to-refresh di sini ---
                   Expanded(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF152236),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.white24),
+                    child: RefreshIndicator(
+                      onRefresh: _fetch,
+                      child: SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF152236),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.white24),
+                          ),
+                          padding: const EdgeInsets.all(12),
+                          child: _loading
+                              ? const Center(child: CircularProgressIndicator())
+                              : _error != null
+                                  ? Center(
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            _error!,
+                                            style: const TextStyle(
+                                                color: Colors.white70),
+                                            textAlign: TextAlign.center,
+                                          ),
+                                          const SizedBox(height: 8),
+                                          OutlinedButton(
+                                            onPressed: _fetch,
+                                            child: const Text('Coba lagi'),
+                                          ),
+                                        ],
+                                      ),
+                                    )
+                                  : _buildTable(),
+                        ),
                       ),
-                      padding: const EdgeInsets.all(12),
-                      child: _loading
-                          ? const Center(child: CircularProgressIndicator())
-                          : _error != null
-                              ? Center(
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        _error!,
-                                        style: const TextStyle(
-                                            color: Colors.white70),
-                                        textAlign: TextAlign.center,
-                                      ),
-                                      const SizedBox(height: 8),
-                                      OutlinedButton(
-                                        onPressed: _fetch,
-                                        child: const Text('Coba lagi'),
-                                      ),
-                                    ],
-                                  ),
-                                )
-                              : _buildTable(),
                     ),
                   ),
                 ],
@@ -167,7 +174,7 @@ class _CustomerScreenState extends State<CustomerScreen> {
         ),
       ),
 
-      // Bottom nav (sesuaikan dengan yang kamu punya)
+      // Bottom nav
       bottomNavigationBar: Container(
         color: const Color(0xFF0A1B2D),
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
@@ -195,7 +202,8 @@ class _CustomerScreenState extends State<CustomerScreen> {
               _navItem(context, Icons.person, 'Profile', onPressed: () {
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                  // NOTE: tanpa `const` biar aman kalau constructor ProfileScreen belum const
+                  MaterialPageRoute(builder: (_) => ProfileScreen()),
                 );
               }),
             ],

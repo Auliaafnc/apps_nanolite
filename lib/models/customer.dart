@@ -5,15 +5,15 @@ class Customer {
   final String? categoryName;
   final String? phone;
   final String? email;
-  final String? alamat; // full address
-  final String? maps;   // gmaps link
+  final String? alamat;   // full address
+  final String? maps;     // gmaps link
   final String? programName;
   final int programPoint;
   final int rewardPoint;
-  final String? image;     // full URL
-  final String? status;    // Pending/Disetujui/Ditolak
-  final String? createdAt; // dd/MM/yyyy
-  final String? updatedAt; // dd/MM/yyyy
+  final String? image;    // full URL
+  final String? status;   // Pending/Disetujui/Ditolak/Active/etc.
+  final String? createdAt;
+  final String? updatedAt;
 
   Customer({
     this.department,
@@ -33,31 +33,54 @@ class Customer {
     this.updatedAt,
   });
 
-  factory Customer.fromJson(Map<String, dynamic> json) {
-    int _asInt(dynamic v) {
-      if (v is int) return v;
-      if (v is String) return int.tryParse(v) ?? 0;
-      return 0;
+  // helper: ambil string pertama yang ada
+  static String? _s(Map<String, dynamic> j, List<String> keys) {
+    for (final k in keys) {
+      final v = j[k];
+      if (v == null) continue;
+      final s = v.toString();
+      if (s.isEmpty || s == 'null') continue;
+      return s;
     }
+    return null;
+  }
 
+  // helper: ambil int pertama yang ada
+  static int _i(Map<String, dynamic> j, List<String> keys) {
+    for (final k in keys) {
+      final v = j[k];
+      if (v is int) return v;
+      if (v is String) {
+        final p = int.tryParse(v);
+        if (p != null) return p;
+      }
+    }
+    return 0;
+  }
+
+  factory Customer.fromJson(Map<String, dynamic> json) {
     return Customer(
-      department: json['department']?.toString(),
-      employee: json['employee']?.toString(),
-      name: json['name']?.toString(),
-      categoryName: json['category_name']?.toString(),
-      phone: json['phone']?.toString(),
-      email: (json['email'] == null || json['email'].toString().isEmpty)
-          ? null
-          : json['email'].toString(),
-      alamat: json['alamat']?.toString(),
-      maps: json['maps']?.toString(),
-      programName: json['customer_program_name']?.toString(),
-      programPoint: _asInt(json['program_point']),
-      rewardPoint: _asInt(json['reward_point']),
-      image: json['image']?.toString(),
-      status: json['status']?.toString(),
-      createdAt: json['created_at']?.toString(),
-      updatedAt: json['updated_at']?.toString(),
+      // department jarang dikirim; kalau backend belum kirim, akan null -> tampil "-"
+      department: _s(json, ['department', 'department_name']),
+      employee: _s(json, ['employee', 'employee_name']),
+      name: _s(json, ['name']),
+      categoryName: _s(json, [
+        'category_name',
+        'customer_category_name',
+        'customer_categories_name'
+      ]),
+      phone: _s(json, ['phone', 'telp']),
+      email: _s(json, ['email']),
+      alamat: _s(json, ['alamat', 'full_address', 'address']),
+      maps: _s(json, ['maps', 'gmaps_link']),
+      programName:
+          _s(json, ['customer_program_name', 'program_name', 'program']),
+      programPoint: _i(json, ['program_point', 'jumlah_program']),
+      rewardPoint: _i(json, ['reward_point']),
+      image: _s(json, ['image', 'image_url']),
+      status: _s(json, ['status', 'status_pengajuan']),
+      createdAt: _s(json, ['created_at', 'createdAt']),
+      updatedAt: _s(json, ['updated_at', 'updatedAt']),
     );
   }
 

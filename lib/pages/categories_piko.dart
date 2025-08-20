@@ -1,12 +1,19 @@
+// lib/pages/categories_piko.dart
 import 'package:flutter/material.dart';
 
-import 'abulb.dart';
+import 'abulb.dart';        // ABulbScreen (punya ctor const? tetap aman tanpa const saat push)
+import 'tbulb.dart';        // TBulbPage
+import 'multipiko.dart';    // MultipackPikoPage
+import 'downlight.dart';    // DownlightPikoPage
+
 import 'create_sales_order.dart';
 import 'home.dart';
 import 'profile.dart';
-import 'sales_order.dart'; // ⬅️ penting untuk navigasi setelah create
+import 'sales_order.dart';  // untuk navigasi setelah create
 
 class CategoriesPikoScreen extends StatelessWidget {
+  const CategoriesPikoScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -62,14 +69,32 @@ class CategoriesPikoScreen extends StatelessWidget {
                     _buildCategoryItem(
                       name: 'T-Bulb',
                       imagePath: 'assets/images/5WATT1.png',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => TBulbPage()),
+                        );
+                      },
                     ),
                     _buildCategoryItem(
                       name: 'Multipack',
                       imagePath: 'assets/images/image1.png',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => MultipackPikoPage()),
+                        );
+                      },
                     ),
                     _buildCategoryItem(
                       name: 'Downlight',
                       imagePath: 'assets/images/DownLight1.png',
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => DownlightPikoPage()),
+                        );
+                      },
                     ),
                   ],
                 ),
@@ -114,7 +139,10 @@ class CategoriesPikoScreen extends StatelessWidget {
                 }
               }),
               _navItem(context, Icons.person, 'Profile', onPressed: () {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => ProfileScreen()));
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => ProfileScreen()),
+                );
               }),
             ],
           ),

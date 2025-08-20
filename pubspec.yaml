@@ -69,6 +69,10 @@ flutter:
   uses-material-design: true
 
   assets:
+  - assets/images/bannernanolite1.png
+  - assets/images/bannerpikooo.jpg
+  - assets/images/bannernanolite.jpg
+  - assets/images/bannerpikolite.jpg
   - assets/images/nanolite_pikolite_logo.png
   - assets/images/50m1.png
   - assets/images/bulb.png
@@ -77,6 +81,7 @@ flutter:
   - assets/images/FloodLight00011.png
   - assets/images/indoor1.png
   - assets/images/MULTIPAK1.png
+  - assets/images/multipack.jpg
   - assets/images/outdoor1.png
   - assets/images/powersuplay1.png
   - assets/images/round.png
@@ -98,10 +103,37 @@ flutter:
   - assets/images/emergency.jpg
   - assets/images/emerspek.jpg
   - assets/images/emerkomp.jpg
-  - assets/images/bannernanolite1.png
-  - assets/images/bannerpikooo.jpg
-  - assets/images/bannernanolite.jpg
-  - assets/images/bannerpikolite.jpg
+  - assets/images/downlsquare.jpg
+  - assets/images/dsquarecom.jpg
+  - assets/images/drsquarenano.jpg
+  - assets/images/psupply.jpg
+  - assets/images/t8nanolite.jpg
+  - assets/images/t8kom.jpg
+  - assets/images/t8nano.jpg
+  - assets/images/floodlightnano.jpg
+  - assets/images/flkom.jpg
+  - assets/images/flnano.jpg
+  - assets/images/sladjustnano.jpg
+  - assets/images/sladjnano.jpg
+  - assets/images/sladjkom.jpg
+  - assets/images/streetlightnano.jpg
+  - assets/images/slkom.jpg
+  - assets/images/slnano.jpg
+  - assets/images/indoornano.jpg
+  - assets/images/inkom.jpg
+  - assets/images/innano.jpg
+  - assets/images/outdoornano.jpg
+  - assets/images/outkom.jpg
+  - assets/images/outnano.jpg
+  - assets/images/ls50mnano.jpg
+  - assets/images/tbulbpiko.jpg
+  - assets/images/tkom.jpg
+  - assets/images/tpiko.jpg
+  - assets/images/multipikko.jpg
+  - assets/images/downlightpiko.jpg
+  - assets/images/downkom.jpg
+  - assets/images/downpiko.jpg
+  
 
   # To add assets to your application, add an assets section, like this:
   # assets:

@@ -1,3 +1,4 @@
+// lib/pages/categories_nano.dart
 import 'package:flutter/material.dart';
 
 import 'bulb.dart';
@@ -6,9 +7,21 @@ import 'create_sales_order.dart';
 import 'emergency.dart';
 import 'home.dart';
 import 'profile.dart';
-import 'sales_order.dart'; // ⬅️ tambahkan ini
+import 'sales_order.dart';
+import 'multipack.dart';
+import 'lsindoor.dart';
+import 'lsoutdoor.dart';
+
+// Pakai alias biar nggak bentrok nama
+import 'downlight_round.dart' as dr;
+import 'downlight_square.dart' as ds;
+
+// Jika T8 sudah ada, biarkan import ini. Kalau belum, hapus baris ini
+import 't8tubelight.dart'; // class: T8TubeLightPage (ubah kalau berbeda)
 
 class CategoriesNanoScreen extends StatelessWidget {
+  const CategoriesNanoScreen({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -31,8 +44,8 @@ class CategoriesNanoScreen extends StatelessWidget {
       body: SafeArea(
         child: LayoutBuilder(
           builder: (context, constraints) {
-            bool isTablet = constraints.maxWidth >= 600;
-            int crossAxisCount = isTablet ? 3 : 2;
+            final bool isTablet = constraints.maxWidth >= 600;
+            final int crossAxisCount = isTablet ? 3 : 2;
 
             return Padding(
               padding: const EdgeInsets.all(20.0),
@@ -50,7 +63,7 @@ class CategoriesNanoScreen extends StatelessWidget {
                   const SizedBox(height: 20),
                   Expanded(
                     child: GridView.builder(
-                      itemCount: 14,
+                      itemCount: _categoryNames.length,
                       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                         crossAxisCount: crossAxisCount,
                         crossAxisSpacing: 12,
@@ -68,7 +81,7 @@ class CategoriesNanoScreen extends StatelessWidget {
         ),
       ),
 
-      // ===== Bottom Navigation: sama persis seperti Home =====
+      // Bottom Navigation
       bottomNavigationBar: Container(
         color: const Color(0xFF0A1B2D),
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
@@ -92,8 +105,7 @@ class CategoriesNanoScreen extends StatelessWidget {
                   context,
                   MaterialPageRoute(builder: (_) => CreateSalesOrderScreen()),
                 );
-                if (created == true) {
-                  if (!context.mounted) return;
+                if (created == true && context.mounted) {
                   Navigator.pushReplacement(
                     context,
                     MaterialPageRoute(
@@ -113,33 +125,34 @@ class CategoriesNanoScreen extends StatelessWidget {
   }
 
   Widget _buildCategoryCard(BuildContext context, int index, bool isTablet) {
-    List<String> categoryNames = [
-      'Bulb', 'Capsule', 'Emergency', 'Multipack', 'Downlight Round', 'Downlight Square',
-      'Power Supply', 'T8-Tube Light', 'Flood Light', 'Street Light 712', 'Street Light 711',
-      'Light Strip 50M', 'Light Strip Indoor', 'Light Strip Outdoor'
-    ];
+    final double imageSize = isTablet ? 100 : 70;
 
-    List<String> imagePaths = [
-      'assets/images/bulb.png', 'assets/images/capsule.png', 'assets/images/emergency.png',
-      'assets/images/MULTIPAK1.png', 'assets/images/round.png', 'assets/images/square.png',
-      'assets/images/powersuplay1.png', 'assets/images/t81.png', 'assets/images/FloodLight00011.png',
-      'assets/images/SL712.png', 'assets/images/SL711.png', 'assets/images/50m1.png',
-      'assets/images/indoor1.png', 'assets/images/outdoor1.png'
+    // Hanya halaman yang SUDAH ada yang dipanggil.
+    final List<WidgetBuilder?> pages = [
+      (_) => const BulbScreen(),             // 0 Bulb
+      (_) => const CapsuleScreen(),          // 1 Capsule
+      (_) => const EmergencyScreen(),        // 2 Emergency
+      (_) => const MultipackPage(),          // 3 Multipack
+      (_) => const dr.DownlightRoundPage(),  // 4 Downlight Round
+      (_) => const ds.DownlightSquarePage(), // 5 Downlight Square
+      null,                                  // 6 Power Supply (belum)
+      (_) => T8TubeLightPage(),              // 7 T8-Tube Light (hapus const jika konstruktor non-const)
+      null,                                  // 8 Flood Light (belum)
+      null,                                  // 9 Street Light 712 (belum)
+      null,                                  // 10 Street Light 711 (belum)
+      null,                                  // 11 Light Strip 50M (belum)
+      (_) => const LSIndoorPage(),           // 12 Light Strip Indoor
+      (_) => const LSOutdoorPage(),     // 13 Light Strip Outdoor
     ];
-
-    double imageSize = isTablet ? 100 : 70;
 
     return GestureDetector(
       onTap: () {
-        if (index == 0) {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => BulbScreen()));
-        } else if (index == 1) {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => CapsuleScreen()));
-        } else if (index == 2) {
-          Navigator.push(context, MaterialPageRoute(builder: (_) => EmergencyScreen()));
+        final builder = pages[index];
+        if (builder != null) {
+          Navigator.push(context, MaterialPageRoute(builder: builder));
         } else {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Halaman ${categoryNames[index]} belum tersedia')),
+            SnackBar(content: Text('Halaman ${_categoryNames[index]} belum tersedia')),
           );
         }
       },
@@ -157,7 +170,7 @@ class CategoriesNanoScreen extends StatelessWidget {
               width: imageSize,
               decoration: BoxDecoration(
                 image: DecorationImage(
-                  image: AssetImage(imagePaths[index]),
+                  image: AssetImage(_imagePaths[index]),
                   fit: (index == 3 || index == 7 || index == 10)
                       ? BoxFit.contain
                       : BoxFit.cover,
@@ -168,7 +181,7 @@ class CategoriesNanoScreen extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             Text(
-              categoryNames[index],
+              _categoryNames[index],
               style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
@@ -184,7 +197,6 @@ class CategoriesNanoScreen extends StatelessWidget {
     );
   }
 
-  // Versi nav item yang responsif (ikon & font) sama seperti Home
   Widget _navItem(BuildContext context, IconData icon, String label, {VoidCallback? onPressed}) {
     final bool isTablet = MediaQuery.of(context).size.shortestSide >= 600;
     final double iconSize = isTablet ? 32 : 28;
@@ -203,3 +215,18 @@ class CategoriesNanoScreen extends StatelessWidget {
     );
   }
 }
+
+// ==== Data statis ====
+const List<String> _categoryNames = [
+  'Bulb', 'Capsule', 'Emergency', 'Multipack', 'Downlight Round', 'Downlight Square',
+  'Power Supply', 'T8-Tube Light', 'Flood Light', 'Street Light 712', 'Street Light 711',
+  'Light Strip 50M', 'Light Strip Indoor', 'Light Strip Outdoor'
+];
+
+const List<String> _imagePaths = [
+  'assets/images/bulb.png', 'assets/images/capsule.png', 'assets/images/emergency.png',
+  'assets/images/MULTIPAK1.png', 'assets/images/round.png', 'assets/images/square.png',
+  'assets/images/powersuplay1.png', 'assets/images/t81.png', 'assets/images/FloodLight00011.png',
+  'assets/images/SL712.png', 'assets/images/SL711.png', 'assets/images/50m1.png',
+  'assets/images/indoor1.png', 'assets/images/outdoor1.png'
+];

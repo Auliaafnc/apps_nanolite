@@ -1,54 +1,54 @@
+// lib/pages/tbulb.dart
 import 'package:flutter/material.dart';
 
+import 'categories_nano.dart';
 import 'create_sales_order.dart';
 import 'home.dart';
 import 'profile.dart';
+import 'sales_order.dart'; // untuk flow setelah create
 
-class DownlightSquarePage extends StatelessWidget {
-  const DownlightSquarePage({super.key});
+class TBulbPage extends StatelessWidget {
+  const TBulbPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // Palet & panel seperti Bulb/Round
+    // === PALETTE (mengikuti Downlight) ===
     const Color bgPage = Color(0xFF0A1B2D);
     const Color headerLight = Color(0xFFE9ECEF);
     const Color blue6500 = Color(0xFF1EA7FF);
-    const Color yellow3000 = Color(0xFFFFC107);
-    const Color grey4000 = Color(0xFFBDBDBD);
-    const Color cardDark = Color(0xFF0F2741);
+    const Color cardDark = Color(0xFF0F2741); // panel gelap biar radius terlihat
 
-    final bool isTablet = MediaQuery.of(context).size.width >= 600;
+    final size = MediaQuery.of(context).size;
+    final bool isTablet = size.width >= 600;
     final double hPad = isTablet ? 24 : 16;
     final double vPad = isTablet ? 18 : 12;
 
+    // ---- Brand chip abu-abu (ikon & teks hitam) ----
     Widget brandChip() => Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
           decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(24)),
           child: const Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.lightbulb, color: Colors.black),
+              Icon(Icons.lightbulb_outline, color: Colors.black),
               SizedBox(width: 8),
               Text('Nanolite', style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600)),
             ],
           ),
         );
 
+    // ---- Hero image: panel gelap + sudut melengkung (seperti Downlight) ----
     Widget productImage() => ClipRRect(
           borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
           child: Container(
             color: cardDark,
             padding: const EdgeInsets.all(16),
-            child: Center(
-              child: Image.asset(
-                'assets/images/downlsquare.jpg',
-                height: isTablet ? 260 : 220,
-                fit: BoxFit.contain,
-              ),
-            ),
+            child: Image.asset('assets/images/tbulbpiko.jpg',
+                height: isTablet ? 220 : 170, fit: BoxFit.contain),
           ),
         );
 
+    // ---- Kartu spesifikasi: header bar abu-abu seperti Downlight ----
     Widget specCard() {
       Widget header = Container(
         width: double.infinity,
@@ -84,17 +84,17 @@ class DownlightSquarePage extends StatelessWidget {
             children: [
               header,
               const SizedBox(height: 6),
+              const SizedBox(height: 2),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    row('Tahan Sampai', '25.000 Jam'),
-                    row('Slim Design (H)', '≈ 26 mm'),
+                    row('Tahan Sampai', '15.000 Jam'),
+                    row('Fitting', 'E27'),
                     row('Hemat Energi', '90%'),
-                    row('CRI', '>80'),
-                    row('IP', '20'),
-                    row('Beam Angle', '120°'),
+                    row('Tegangan', '110–240V'),
+                    row('CRI', '>80Ra'),
                   ],
                 ),
               ),
@@ -104,6 +104,7 @@ class DownlightSquarePage extends StatelessWidget {
       );
     }
 
+    // ---- Header & cell builder (gaya Bulb/Downlight) ----
     Widget th(String t) => ConstrainedBox(
           constraints: const BoxConstraints(minHeight: 44),
           child: Container(
@@ -112,11 +113,10 @@ class DownlightSquarePage extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 8),
             child: Text(t,
                 textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
                 style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w700, height: 1.1)),
           ),
         );
+
     Widget td(String t) => ConstrainedBox(
           constraints: const BoxConstraints(minHeight: 42),
           child: Container(
@@ -127,24 +127,7 @@ class DownlightSquarePage extends StatelessWidget {
                 style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, height: 1.1)),
           ),
         );
-    Widget tdYellow(String t) => ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 42),
-          child: Container(
-            alignment: Alignment.center,
-            color: yellow3000,
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: Text(t, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w800, height: 1.1)),
-          ),
-        );
-    Widget tdGrey(String t) => ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 42),
-          child: Container(
-            alignment: Alignment.center,
-            color: grey4000,
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: Text(t, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w800, height: 1.1)),
-          ),
-        );
+
     Widget tdBlue(String t) => ConstrainedBox(
           constraints: const BoxConstraints(minHeight: 42),
           child: Container(
@@ -155,41 +138,33 @@ class DownlightSquarePage extends StatelessWidget {
           ),
         );
 
+    // ---- Tabel T-Bulb (kolom: Varian Watt | Dimensi Produk | Harga | Warna | Keterangan) ----
     Widget specTable() {
-      // Watt | Lumen | Diameter | Harga | 3000K | Ket | 4000K | Ket | 6500K | Ket | Isi/Dus
       const rows = [
-        ['5 Watt', '600lm', '95mm', 'Rp 69.900', '3000K', 'Cahaya Putih Kekuningan', '4000K', 'Cahaya Natural', '6500K', 'Cahaya Putih Kebiruan', '100'],
-        ['9 Watt', '1080lm', '118mm', 'Rp 95.900', '3000K', 'Cahaya Putih Kekuningan', '4000K', 'Cahaya Natural', '6500K', 'Cahaya Putih Kebiruan', '100'],
-        ['12 Watt', '1440lm', '145mm', 'Rp 101.900', '3000K', 'Cahaya Putih Kekuningan', '4000K', 'Cahaya Natural', '6500K', 'Cahaya Putih Kebiruan', '60'],
-        ['15 Watt', '1800lm', '170mm', 'Rp 139.900', '3000K', 'Cahaya Putih Kekuningan', '4000K', 'Cahaya Natural', '6500K', 'Cahaya Putih Kebiruan', '60'],
-        ['18 Watt', '2160lm', '220mm', 'Rp 186.900', '3000K', 'Cahaya Putih Kekuningan', '4000K', 'Cahaya Natural', '6500K', 'Cahaya Putih Kebiruan', '40'],
+        ['5 Watt',  '45mm x 100mm',     'Rp 13.900', '6500K', 'Cahaya Putih Kebiruan'],
+        ['10 Watt', '59mm x 115mm',     'Rp 20.900', '6500K', 'Cahaya Putih Kebiruan'],
+        ['15 Watt', '69mm x 133mm',     'Rp 25.900', '6500K', 'Cahaya Putih Kebiruan'],
+        ['20 Watt', '80mm x 145mm',     'Rp 32.900', '6500K', 'Cahaya Putih Kebiruan'],
+        ['30 Watt', '100mm x 180mm',    'Rp 46.900', '6500K', 'Cahaya Putih Kebiruan'],
+        ['40 Watt', '113mm x 200mm',    'Rp 65.900', '6500K', 'Cahaya Putih Kebiruan'],
+        ['50 Watt', '113mm x 215mm',    'Rp 80.900', '6500K', 'Cahaya Putih Kebiruan'],
+        ['60 Watt', '113.4mm x 215mm',  'Rp 93.900', '6500K', 'Cahaya Putih Kebiruan'],
       ];
 
+      // Lebar kolom (HP fixed, Tablet flex)
       const phoneWidths = <int, TableColumnWidth>{
-        0: FixedColumnWidth(120),
-        1: FixedColumnWidth(100),
-        2: FixedColumnWidth(110),
-        3: FixedColumnWidth(130),
-        4: FixedColumnWidth(100),
-        5: FixedColumnWidth(170),
-        6: FixedColumnWidth(100),
-        7: FixedColumnWidth(150),
-        8: FixedColumnWidth(100),
-        9: FixedColumnWidth(170),
-        10: FixedColumnWidth(90),
+        0: FixedColumnWidth(120), // Varian Watt
+        1: FixedColumnWidth(200), // Dimensi
+        2: FixedColumnWidth(140), // Harga
+        3: FixedColumnWidth(90),  // Warna
+        4: FixedColumnWidth(220), // Keterangan
       };
       final tabletWidths = <int, TableColumnWidth>{
-        0: const FlexColumnWidth(1.0),
-        1: const FlexColumnWidth(0.9),
-        2: const FlexColumnWidth(1.0),
-        3: const FlexColumnWidth(1.2),
-        4: const FlexColumnWidth(0.9),
-        5: const FlexColumnWidth(1.4),
-        6: const FlexColumnWidth(0.9),
-        7: const FlexColumnWidth(1.2),
-        8: const FlexColumnWidth(0.9),
-        9: const FlexColumnWidth(1.4),
-        10: const FlexColumnWidth(0.9),
+        0: const FlexColumnWidth(1.1),
+        1: const FlexColumnWidth(1.6),
+        2: const FlexColumnWidth(1.1),
+        3: const FlexColumnWidth(.9),
+        4: const FlexColumnWidth(1.6),
       };
 
       final table = Table(
@@ -201,32 +176,21 @@ class DownlightSquarePage extends StatelessWidget {
         ),
         children: [
           TableRow(children: [
-            th('Watt'),
-            th('Lumen'),
-            th('Diameter'),
+            th('Varian Watt'),
+            th('Dimensi Produk'),
             th('Harga'),
             th('Warna'),
             th('Keterangan'),
-            th('Warna'),
-            th('Keterangan'),
-            th('Warna'),
-            th('Keterangan'),
-            th('Isi/Dus'),
           ]),
           for (final r in rows)
             TableRow(
               decoration: const BoxDecoration(color: bgPage),
-              children: [
-                td(r[0]), td(r[1]), td(r[2]), td(r[3]),
-                tdYellow(r[4]), td(r[5]),
-                tdGrey(r[6]), td(r[7]),
-                tdBlue(r[8]), td(r[9]),
-                td(r[10]),
-              ],
+              children: [td(r[0]), td(r[1]), td(r[2]), tdBlue(r[3]), td(r[4])],
             ),
         ],
       );
 
+      // Panel tabel dibungkus ClipRRect agar sudut melengkung terlihat (gaya Downlight)
       return ClipRRect(
         borderRadius: BorderRadius.circular(12),
         child: Container(
@@ -236,24 +200,23 @@ class DownlightSquarePage extends StatelessWidget {
               ? table
               : SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(minWidth: 1340),
-                    child: table,
-                  ),
+                  child: ConstrainedBox(constraints: const BoxConstraints(minWidth: 750), child: table),
                 ),
         ),
       );
     }
 
-    Widget roundedImage(String path, double h) => ClipRRect(
+    // Gambar perbandingan pakai panel rounded (gaya Downlight)
+    Widget roundedImage(String path) => ClipRRect(
           borderRadius: BorderRadius.circular(16),
           child: Container(
             color: cardDark,
             padding: const EdgeInsets.all(12),
-            child: Image.asset(path, height: h, fit: BoxFit.contain),
+            child: Image.asset(path, height: isTablet ? 170 : 150, fit: BoxFit.contain),
           ),
         );
 
+    // ---- Page ----
     return Scaffold(
       backgroundColor: bgPage,
       appBar: AppBar(
@@ -261,51 +224,91 @@ class DownlightSquarePage extends StatelessWidget {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            if (Navigator.of(context).canPop()) {
+              Navigator.of(context).pop();
+            } else {
+              // Perbaikan: jangan pakai `const` kalau ctor bukan const
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => CategoriesNanoScreen()),
+              );
+            }
+          },
         ),
         title: const Text('nanopiko', style: TextStyle(color: Colors.black)),
+        centerTitle: false,
       ),
       body: ListView(
         padding: EdgeInsets.fromLTRB(hPad, vPad, hPad, vPad + 16),
         children: [
           brandChip(),
           SizedBox(height: vPad),
-          Text('Product Downlight Square',
+          Text('Product T-Bulb',
               style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: isTablet ? 18 : 16)),
           SizedBox(height: vPad),
+
+          // HERO (row di tablet, stack di HP)
           LayoutBuilder(builder: (context, c) {
             final row = isTablet && c.maxWidth >= 680;
             final img = productImage();
             final spec = specCard();
-            if (row) return Row(children: [Expanded(child: img), const SizedBox(width: 16), Expanded(child: spec)]);
+            if (row) {
+              return Row(children: [Expanded(child: img), const SizedBox(width: 16), Expanded(child: spec)]);
+            }
             return Column(children: [img, const SizedBox(height: 12), spec]);
           }),
+
           SizedBox(height: vPad),
+
+          // TABLE (rounded panel)
           specTable(),
+
           SizedBox(height: vPad * 1.5),
+
+          // Perbandingan (gambar saja, rounded panel)
           LayoutBuilder(builder: (context, c) {
             final twoCols = isTablet && c.maxWidth >= 680;
-            final left = roundedImage('assets/images/drsquarenano.jpg', isTablet ? 220 : 170);
-            final right = roundedImage('assets/images/dsquarecom.jpg', isTablet ? 220 : 170);
-            if (twoCols) return Row(children: [Expanded(child: left), const SizedBox(width: 16), Expanded(child: right)]);
+            final left = roundedImage('assets/images/tpiko.jpg');
+            final right = roundedImage('assets/images/tkom.jpg');
+            if (twoCols) {
+              return Row(children: [Expanded(child: left), const SizedBox(width: 16), Expanded(child: right)]);
+            }
             return Column(children: [left, const SizedBox(height: 12), right]);
           }),
         ],
       ),
+
+      // ===== BOTTOM NAVIGATION: sama persis dengan Home =====
       bottomNavigationBar: Container(
         color: bgPage,
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(40)),
+          decoration: BoxDecoration(
+            color: Colors.grey[300],
+            borderRadius: BorderRadius.circular(40),
+          ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _navItem(context, Icons.home, 'Home', onPressed: () {
                 Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => HomeScreen()));
               }),
-              _navItem(context, Icons.shopping_cart, 'Create Order', onPressed: () {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => CreateSalesOrderScreen()));
+              _navItem(context, Icons.shopping_cart, 'Create Order', onPressed: () async {
+                final created = await Navigator.push<bool>(
+                  context,
+                  MaterialPageRoute(builder: (_) => CreateSalesOrderScreen()),
+                );
+                if (created == true) {
+                  if (!context.mounted) return;
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => SalesOrderScreen(showCreatedSnack: true),
+                    ),
+                  );
+                }
               }),
               _navItem(context, Icons.person, 'Profile', onPressed: () {
                 Navigator.push(context, MaterialPageRoute(builder: (_) => ProfileScreen()));
@@ -317,6 +320,7 @@ class DownlightSquarePage extends StatelessWidget {
     );
   }
 
+  // ---- Nav item versi Home (responsive size & warna sama) ----
   Widget _navItem(BuildContext context, IconData icon, String label, {VoidCallback? onPressed}) {
     final bool isTablet = MediaQuery.of(context).size.shortestSide >= 600;
     final double iconSize = isTablet ? 32 : 28;
