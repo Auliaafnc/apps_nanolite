@@ -19,7 +19,7 @@
         "joaopaulolndev/filament-edit-profile": "^1.0",
         "joshembling/image-optimizer": "^1.6",
         "laravel/framework": "^12.0",
-        "laravel/sanctum": "^4.1",
+        "laravel/sanctum": "^4.2",
         "laravel/tinker": "^2.10.1",
         "laravolt/indonesia": "^0.37.0",
         "league/csv": "^9.24",

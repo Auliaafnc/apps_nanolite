@@ -18,7 +18,7 @@ class OrderTransformer extends JsonResource
         $this->resource->loadMissing([
             'department:id,name',
             'employee:id,name',
-            'customer:id,name',
+            'customer:id,name,customer_category_id,phone,address',
             'customerCategory:id,name',
             'customerProgram:id,name',
         ]);
@@ -36,48 +36,67 @@ class OrderTransformer extends JsonResource
             default    => ucfirst((string)$this->status),
         };
 
-        $alamatReadable  = $this->mapAddressesReadable($this->address);
+        $alamatReadable   = $this->mapAddressesReadable($this->address);
         $productsReadable = $this->mapProductsReadable($this->products);
 
         return [
             'no_order'             => $this->no_order,
             'department'           => $this->department?->name ?? '-',
             'employee'             => $this->employee?->name ?? '-',
+
+            // Relasi customer & kategori
+            'customer_id'          => $this->customer?->id ?? null,
             'customer'             => $this->customer?->name ?? '-',
+            'customer_category_id' => $this->customer?->customer_category_id ?? null,
             'customer_category'    => $this->customerCategory?->name ?? '-',
+            'customer_program_id'  => $this->customerProgram?->id ?? null,
             'customer_program'     => $this->customerProgram?->name ?? null,
-            'phone'                => $this->phone,
+
+            // Kontak
+            'phone'                => $this->customer?->phone ?? $this->phone,
             'address_text'         => $this->addressText($alamatReadable),
             'address_detail'       => $alamatReadable,
+
+            // Produk
             'products'             => $productsReadable,
-            'diskon'               => [
-                'enabled'               => (bool)($this->diskons_enabled ?? false),
-                'diskon_1'              => (float)($this->diskon_1 ?? 0),
-                'penjelasan_diskon_1'   => $this->penjelasan_diskon_1,
-                'diskon_2'              => (float)($this->diskon_2 ?? 0),
-                'penjelasan_diskon_2'   => $this->penjelasan_diskon_2,
+
+            // Diskon
+            'diskon' => [
+                'enabled'             => (bool)($this->diskons_enabled ?? false),
+                'diskon_1'            => (float)($this->diskon_1 ?? 0),
+                'penjelasan_diskon_1' => $this->penjelasan_diskon_1,
+                'diskon_2'            => (float)($this->diskon_2 ?? 0),
+                'penjelasan_diskon_2' => $this->penjelasan_diskon_2,
             ],
-            'reward'               => [
+
+            // Reward & Program Point
+            'reward' => [
                 'enabled' => (bool)($this->reward_enabled ?? false),
                 'points'  => (int)($this->reward_point ?? 0),
             ],
-            'program_point'        => [
+            'program_point' => [
                 'enabled' => (bool)($this->program_enabled ?? false),
                 'points'  => (int)($this->jumlah_program ?? 0),
             ],
+
+            // Status & pembayaran
             'payment_method'       => $this->payment_method === 'tempo' ? 'Tempo' : 'Cash',
             'status_pembayaran'    => $statusPembayaranLabel,
             'status'               => $statusLabel,
+
+            // Total harga
             'total_harga'          => (int)($this->total_harga ?? 0),
             'total_harga_after_tax'=> (int)($this->total_harga_after_tax ?? 0),
+
+            // File unduhan
             'invoice_pdf_url'      => $this->order_file  ? Storage::url($this->order_file)  : null,
-            'invoice_excel_url'    => $this->order_excel ? Storage::url($this->order_excel) : null,
+           
             'created_at'           => optional($this->created_at)->format('d/m/Y'),
             'updated_at'           => optional($this->updated_at)->format('d/m/Y'),
         ];
     }
 
-    /* ---------- Helpers: address mapping ---------- */
+    /* ---------------- Helpers ---------------- */
 
     private function addressText(array $items): ?string
     {
@@ -108,7 +127,7 @@ class OrderTransformer extends JsonResource
 
             return [
                 'detail_alamat' => $a['detail_alamat'] ?? null,
-                'provinsi'      => ['code' => $provCode, 'name' => $this->nameFromCode(Provinsi::class,  $provCode)],
+                'provinsi'      => ['code' => $provCode, 'name' => $this->nameFromCode(Provinsi::class, $provCode)],
                 'kota_kab'      => ['code' => $kabCode,  'name' => $this->nameFromCode(Kabupaten::class, $kabCode)],
                 'kecamatan'     => ['code' => $kecCode,  'name' => $this->nameFromCode(Kecamatan::class, $kecCode)],
                 'kelurahan'     => ['code' => $kelCode,  'name' => $this->nameFromCode(Kelurahan::class, $kelCode)],
@@ -129,8 +148,6 @@ class OrderTransformer extends JsonResource
         return optional(PostalCode::where('village_code', $villageCode)->first())->postal_code;
     }
 
-    /* ---------- Helpers: products mapping ---------- */
-
     private function mapProductsReadable($products): array
     {
         $items = is_array($products) ? $products : json_decode($products ?? '[]', true);
@@ -141,11 +158,19 @@ class OrderTransformer extends JsonResource
                 ? Product::with(['brand:id,name', 'category:id,name'])->find($p['produk_id'])
                 : null;
 
+            // Ambil warna dari JSON product->colors
+        $colorName = null;
+        if ($product && !empty($p['warna_id'])) {
+            $colors = collect($product->colors ?? []);
+            $colorObj = $colors->firstWhere('id', $p['warna_id']);
+            $colorName = $colorObj['name'] ?? $p['warna_id'];
+        }
+
             return [
                 'brand'    => $product?->brand?->name ?? null,
                 'category' => $product?->category?->name ?? null,
                 'product'  => $product?->name ?? null,
-                'color'    => $p['warna_id'] ?? null,
+                'color'    => $colorName,
                 'quantity' => (int)($p['quantity'] ?? 0),
                 'price'    => isset($p['price']) ? (int)$p['price'] : null,
                 'subtotal' => isset($p['subtotal']) ? (int)$p['subtotal'] : null,

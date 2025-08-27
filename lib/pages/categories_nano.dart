@@ -11,13 +11,18 @@ import 'sales_order.dart';
 import 'multipack.dart';
 import 'lsindoor.dart';
 import 'lsoutdoor.dart';
+import 'powersupply.dart';
+import 'ls50m.dart';
+import 'floodlight.dart';
+import 'sl711.dart';
+import 'sl712.dart';
+import 't8tubelight.dart';
+
 
 // Pakai alias biar nggak bentrok nama
 import 'downlight_round.dart' as dr;
 import 'downlight_square.dart' as ds;
 
-// Jika T8 sudah ada, biarkan import ini. Kalau belum, hapus baris ini
-import 't8tubelight.dart'; // class: T8TubeLightPage (ubah kalau berbeda)
 
 class CategoriesNanoScreen extends StatelessWidget {
   const CategoriesNanoScreen({super.key});
@@ -135,14 +140,14 @@ class CategoriesNanoScreen extends StatelessWidget {
       (_) => const MultipackPage(),          // 3 Multipack
       (_) => const dr.DownlightRoundPage(),  // 4 Downlight Round
       (_) => const ds.DownlightSquarePage(), // 5 Downlight Square
-      null,                                  // 6 Power Supply (belum)
-      (_) => T8TubeLightPage(),              // 7 T8-Tube Light (hapus const jika konstruktor non-const)
-      null,                                  // 8 Flood Light (belum)
-      null,                                  // 9 Street Light 712 (belum)
-      null,                                  // 10 Street Light 711 (belum)
-      null,                                  // 11 Light Strip 50M (belum)
+      (_) => const PowerSupplyPage(),        // 6 Power Supply (belum)
+      (_) => const T8TubeLightPage(),        // 7 T8-Tube Light (hapus const jika konstruktor non-const)
+      (_) => const FloodLightPage(),         // 8 Flood Light (belum)
+      (_) => const StreetLight712Page(),         // 9 Street Light 712 (belum)
+      (_) => const StreetLight711Page(),        // 10 Street Light 711 (belum)
+      (_) => const LightStrip50MPage(),      // 11 Light Strip 50M (belum)
       (_) => const LSIndoorPage(),           // 12 Light Strip Indoor
-      (_) => const LSOutdoorPage(),     // 13 Light Strip Outdoor
+      (_) => const LSOutdoorPage(),          // 13 Light Strip Outdoor
     ];
 
     return GestureDetector(

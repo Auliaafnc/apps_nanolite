@@ -1,5 +1,6 @@
 // lib/pages/create_sales_order.dart
 import 'package:flutter/material.dart';
+import '../services/api_service.dart';
 
 class CreateSalesOrderScreen extends StatefulWidget {
   const CreateSalesOrderScreen({super.key});
@@ -12,6 +13,35 @@ class _CreateSalesOrderScreenState extends State<CreateSalesOrderScreen> {
   bool _rewardAktif = false;
   bool _programAktif = false;
   bool _diskonAktif = false;
+
+  // Selected IDs
+  int? _selectedDeptId;
+  int? _selectedEmpId;
+  int? _selectedCategoryId;
+  int? _selectedCustomerId;
+  int? _selectedProgramId;
+
+  // Controller untuk auto-fill
+  final _phoneCtrl = TextEditingController();
+  final _addressCtrl = TextEditingController();
+  final _programCtrl = TextEditingController();
+
+  List<OptionItem> _customers = [];
+
+  Future<void> _loadCustomers() async {
+  if (_selectedDeptId == null || _selectedEmpId == null || _selectedCategoryId == null) {
+    setState(() => _customers = []);
+    return;
+  }
+
+  final list = await ApiService.fetchCustomersFiltered(
+    departmentId: _selectedDeptId!,
+    employeeId: _selectedEmpId!,
+    categoryId: _selectedCategoryId!,
+  );
+
+  setState(() => _customers = list);
+}
 
   // List produk sebagai kartu
   final _items = <_ProductItem>[ _ProductItem() ];
@@ -33,7 +63,6 @@ class _CreateSalesOrderScreenState extends State<CreateSalesOrderScreen> {
           child: LayoutBuilder(
             builder: (context, constraints) {
               final bool isTablet = constraints.maxWidth >= 600;
-              // HP: 2 kolom rapat (gap 20), Tablet: lebih lega
               final double fieldWidth =
                   isTablet ? (constraints.maxWidth - 60) / 2 : (constraints.maxWidth - 20) / 2;
 
@@ -46,19 +75,110 @@ class _CreateSalesOrderScreenState extends State<CreateSalesOrderScreen> {
                   ),
                   const SizedBox(height: 20),
 
-                  // ===== FORM UTAMA (gaya CreateReturn/Garansi) =====
+                  // ===== FORM UTAMA =====
                   Wrap(
                     spacing: 20,
                     runSpacing: 16,
                     children: [
-                      _darkDropdown('Department *', ['Sales', 'Marketing'], fieldWidth),
-                      _darkDropdown('Karyawan *', ['Aulia', 'Karina'], fieldWidth),
+                      // Department
+                      _dropdownFuture(
+                        label: 'Department *',
+                        future: ApiService.fetchDepartments(),
+                        value: _selectedDeptId,
+                        width: fieldWidth,
+                        onChanged: (v) {
+                          setState(() {
+                            _selectedDeptId = v;
+                            _selectedEmpId = null;   // 🔥 reset employee biar nggak error
+                          });
+                          _loadCustomers();
+                        },
+                      ),
 
-                      _darkDropdown('Kategori Customer *', ['Retail', 'Wholesale'], fieldWidth),
-                      _darkDropdown('Customer *', ['Customer A', 'Customer B'], fieldWidth),
+                      _dropdownFuture(
+                      label: 'Karyawan *',
+                      future: _selectedDeptId != null
+                          ? ApiService.fetchEmployees(departmentId: _selectedDeptId!)
+                          : Future.value([]),
+                      value: _selectedEmpId,
+                      width: fieldWidth,
+                      onChanged: (v) {
+                        setState(() {
+                          _selectedEmpId = v;
+                        });
+                        _loadCustomers(); // ✅ aman, sudah di dalam block function
+                      },
+                    ),
 
-                      _darkTextField('Phone *', fieldWidth),
-                      _darkTextField('Address', fieldWidth, maxLines: 2),
+                      _dropdownFuture(
+                        label: 'Kategori Customer *',
+                        future: ApiService.fetchCustomerCategories(),
+                        value: _selectedCategoryId,
+                        width: fieldWidth,
+                        onChanged: (v) {
+                          setState(() {
+                            _selectedCategoryId = v;
+                            _selectedCustomerId = null;   // 🔥 reset customer saat ganti kategori
+                          });
+                           _loadCustomers();
+                        },
+                      ),
+
+                      // Ganti bagian _dropdownFuture Customer dengan ini
+SizedBox(
+  width: fieldWidth,
+  child: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const Text("Customer *", style: TextStyle(color: Colors.white)),
+      const SizedBox(height: 6),
+      DropdownButtonFormField<int>(
+        value: _selectedCustomerId,
+        items: _customers
+            .map((c) => DropdownMenuItem(
+                  value: c.id,
+                  child: Text(c.name),
+                ))
+            .toList(),
+        onChanged: (v) {
+          setState(() {
+            _selectedCustomerId = v;
+            final selected = _customers.firstWhere(
+              (c) => c.id == v,
+              orElse: () => OptionItem(
+                id: 0,
+                name: '-',
+                phone: '',
+                address: '-',
+                programName: '-',
+                programId: null,
+                categoryId: null,
+              ),
+            );
+
+            _phoneCtrl.text   = selected.phone ?? '';
+            _addressCtrl.text = selected.address ?? '';
+            _programCtrl.text = selected.programName ?? '-';
+            _selectedProgramId = selected.programId;
+          });
+        },
+        decoration: InputDecoration(
+          filled: true,
+          fillColor: const Color(0xFF22344C),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        ),
+        dropdownColor: Colors.grey[900],
+        iconEnabledColor: Colors.white,
+        style: const TextStyle(color: Colors.white),
+      ),
+    ],
+  ),
+),
+
+
+                      _darkTextField('Phone *', fieldWidth, controller: _phoneCtrl),
+                      _darkTextField('Address', fieldWidth, controller: _addressCtrl, maxLines: 2),
 
                       // Reward
                       _darkTextField('Poin Reward', fieldWidth, enabled: _rewardAktif),
@@ -72,8 +192,9 @@ class _CreateSalesOrderScreenState extends State<CreateSalesOrderScreen> {
                         setState(() => _programAktif = v);
                       }),
 
-                      _darkDropdown('Program Pelanggan', ['Gold', 'Silver'], fieldWidth,
-                          enabled: _programAktif),
+                      _darkTextField('Program Pelanggan', fieldWidth,
+                        controller: _programCtrl, enabled: false),
+
                       _switchTile(fieldWidth, 'Diskon', _diskonAktif, (v) {
                         setState(() => _diskonAktif = v);
                       }),
@@ -96,7 +217,7 @@ class _CreateSalesOrderScreenState extends State<CreateSalesOrderScreen> {
 
                   const SizedBox(height: 20),
 
-                  // ===== DETAIL PRODUK (kartu, 2 kolom + hapus) =====
+                  // ===== DETAIL PRODUK =====
                   const Text('Detail Produk',
                       style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 10),
@@ -126,9 +247,43 @@ class _CreateSalesOrderScreenState extends State<CreateSalesOrderScreen> {
                         Navigator.pop(context, false);
                       }),
                       const SizedBox(width: 12),
-                      _formButton(context, 'Create', Colors.blue, () {
-                        // TODO: kirim data _items + form ke API
-                        Navigator.pop(context, true);
+                      _formButton(context, 'Create', Colors.blue, () async {
+                        final success = await ApiService.createOrder(
+                          companyId: 1, // sesuaikan
+                          departmentId: _selectedDeptId!,
+                          employeeId: _selectedEmpId!,
+                          customerId: _selectedCustomerId!,
+                          categoryId: _selectedCategoryId!,
+                          programId: _selectedProgramId,
+                          phone: _phoneCtrl.text,
+                          addressText: _addressCtrl.text,
+                          programEnabled: _programAktif,
+                          rewardEnabled: _rewardAktif,
+                          products: _items.map((p) => {
+                            'brand': p.brandId,
+                            'category': p.kategoriId,
+                            'product': p.produkId,
+                            'color': p.warnaId,
+                            'quantity': p.qty ?? 0,
+                            'price': p.hargaPerProduk ?? 0,
+                          }).toList(),
+                          paymentMethod: "cash",
+                          statusPembayaran: "unpaid",
+                          status: "pending",
+                        );
+
+                        if (!mounted) return;
+
+                        if (success) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text("Order berhasil dibuat")),
+                          );
+                          Navigator.pop(context, true);
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text("Gagal membuat order")),
+                          );
+                        }
                       }),
                     ],
                   ),
@@ -144,8 +299,6 @@ class _CreateSalesOrderScreenState extends State<CreateSalesOrderScreen> {
   // ================== KARTU DETAIL PRODUK ==================
   Widget _productCard(int i) {
     const gap = 16.0;
-
-    // Hitung subtotal (harga * qty)
     final double harga = _items[i].hargaPerProduk ?? 0;
     final int qty = _items[i].qty ?? 0;
     final double subtotal = harga * qty;
@@ -181,55 +334,76 @@ class _CreateSalesOrderScreenState extends State<CreateSalesOrderScreen> {
             ),
           ),
 
-          // Body (selalu 2 kolom)
+          // Body
           Padding(
             padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
             child: LayoutBuilder(
               builder: (context, inner) {
                 final double itemWidth = (inner.maxWidth - gap) / 2;
-
                 return Wrap(
                   spacing: gap,
                   runSpacing: 16,
                   children: [
-                    SizedBox(
+                    _dropdownFuture(
+                      label: 'Brand *',
+                      future: ApiService.fetchBrands(),
+                      value: _items[i].brandId,
                       width: itemWidth,
-                      child: _pillDropdown(
-                        label: 'Brand *',
-                        options: const ['Brand A', 'Brand B'],
-                        value: _items[i].brand,
-                        onChanged: (v) => setState(() => _items[i].brand = v),
-                      ),
+                      onChanged: (v) => setState(() => _items[i].brandId = v),
                     ),
-                    SizedBox(
+                    _dropdownFuture(
+                      label: 'Kategori *',
+                      future: ApiService.fetchProductCategories(),
+                      value: _items[i].kategoriId,
                       width: itemWidth,
-                      child: _pillDropdown(
-                        label: 'Kategori *',
-                        options: const ['Cat', 'Semen'],
-                        value: _items[i].kategori,
-                        onChanged: (v) => setState(() => _items[i].kategori = v),
-                      ),
+                      onChanged: (v) => setState(() => _items[i].kategoriId = v),
                     ),
-                    SizedBox(
-                      width: itemWidth,
-                      child: _pillDropdown(
-                        label: 'Produk *',
-                        options: const ['Nano A', 'Piko B'],
-                        value: _items[i].produk,
-                        onChanged: (v) => setState(() => _items[i].produk = v),
-                      ),
-                    ),
-                    SizedBox(
-                      width: itemWidth,
-                      child: _pillDropdown(
-                        label: 'Warna *',
-                        options: const ['Putih', 'Krem'],
-                        value: _items[i].warna,
-                        onChanged: (v) => setState(() => _items[i].warna = v),
-                      ),
-                    ),
+                    _dropdownFuture(
+  label: 'Produk *',
+  future: ApiService.fetchProducts(),
+  value: _items[i].produkId,
+  width: itemWidth,
+  onChanged: (v) async {
+    setState(() {
+      _items[i].produkId = v;
+      _items[i].warnaId = null; // reset warna
+      _items[i].availableColors = [];
+    });
 
-                    // Harga / Produk
+    if (v != null) {
+      final cols = await ApiService.fetchColorsByProduct(v);
+      setState(() => _items[i].availableColors = cols);
+    }
+  },
+),
+
+                    SizedBox(
+  width: itemWidth,
+  child: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      const Text("Warna *", style: TextStyle(color: Colors.white)),
+      const SizedBox(height: 6),
+      DropdownButtonFormField<int>(
+        value: _items[i].warnaId,
+        items: (_items[i].availableColors)
+            .map((c) => DropdownMenuItem(value: c.id, child: Text(c.name)))
+            .toList(),
+        onChanged: (v) => setState(() => _items[i].warnaId = v),
+        decoration: InputDecoration(
+          filled: true,
+          fillColor: const Color(0xFF22344C),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        ),
+        dropdownColor: Colors.grey[900],
+        iconEnabledColor: Colors.white,
+        style: const TextStyle(color: Colors.white),
+      ),
+    ],
+  ),
+),
+
                     SizedBox(
                       width: itemWidth,
                       child: _moneyField(
@@ -239,8 +413,6 @@ class _CreateSalesOrderScreenState extends State<CreateSalesOrderScreen> {
                             setState(() => _items[i].hargaPerProduk = double.tryParse(txt.replaceAll('.', '').replaceAll(',', '.'))),
                       ),
                     ),
-
-                    // Jumlah
                     SizedBox(
                       width: itemWidth,
                       child: _qtyField(
@@ -249,8 +421,6 @@ class _CreateSalesOrderScreenState extends State<CreateSalesOrderScreen> {
                         onChanged: (txt) => setState(() => _items[i].qty = int.tryParse(txt)),
                       ),
                     ),
-
-                    // Subtotal (read-only, tampil seperti pill)
                     SizedBox(
                       width: itemWidth,
                       child: _displayBox(
@@ -268,9 +438,57 @@ class _CreateSalesOrderScreenState extends State<CreateSalesOrderScreen> {
     );
   }
 
-  // ================== INPUT KOMONAN (gaya gelap seragam) ==================
+  // ================== REUSABLE DROPDOWN FROM FUTURE ==================
+  Widget _dropdownFuture({
+    required String label,
+    required Future<List<OptionItem>> future,
+    required int? value,
+    required double width,
+    required ValueChanged<int?> onChanged,
+    bool enabled = true,
+    ValueChanged<List<OptionItem>>? onData,
+  }) {
+    return SizedBox(
+      width: width,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: const TextStyle(color: Colors.white)),
+          const SizedBox(height: 6),
+          FutureBuilder<List<OptionItem>>(
+            future: future,
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) {
+                return const SizedBox(height: 48, child: Center(child: CircularProgressIndicator()));
+              }
+              final items = snapshot.data!;
+              if (onData != null) onData!(items);
+              return DropdownButtonFormField<int>(
+                value: value,
+                items: items
+                    .map((opt) => DropdownMenuItem(value: opt.id, child: Text(opt.name)))
+                    .toList(),
+                onChanged: enabled ? onChanged : null,
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: const Color(0xFF22344C),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                ),
+                dropdownColor: Colors.grey[900],
+                iconEnabledColor: Colors.white,
+                style: const TextStyle(color: Colors.white),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ================== INPUT KOMONAN ==================
   Widget _darkTextField(String label, double width,
-      {int maxLines = 1, bool enabled = true, String? hint, String? prefix}) {
+      {int maxLines = 1, bool enabled = true, String? hint, String? prefix,TextEditingController? controller,}) {
     return SizedBox(
       width: width,
       child: Column(
@@ -279,6 +497,7 @@ class _CreateSalesOrderScreenState extends State<CreateSalesOrderScreen> {
           Text(label, style: const TextStyle(color: Colors.white)),
           const SizedBox(height: 6),
           TextFormField(
+            controller: controller,
             maxLines: maxLines,
             enabled: enabled,
             style: TextStyle(color: enabled ? Colors.white : Colors.white54),
@@ -338,43 +557,6 @@ class _CreateSalesOrderScreenState extends State<CreateSalesOrderScreen> {
           ],
         ),
       ),
-    );
-  }
-
-  // ===== Komponen dropdown bergaya "pill" (dipakai di kartu produk)
-  Widget _pillDropdown({
-    required String label,
-    required List<String> options,
-    required String? value,
-    required ValueChanged<String?> onChanged,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: const TextStyle(color: Colors.white)),
-        const SizedBox(height: 6),
-        DropdownButtonFormField<String>(
-          value: value,
-          items: options.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-          onChanged: onChanged,
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: const Color(0xFF22344C),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-            suffixIcon: value == null
-                ? null
-                : IconButton(
-                    tooltip: 'Clear',
-                    icon: const Icon(Icons.close, size: 18, color: Colors.white70),
-                    onPressed: () => onChanged(null),
-                  ),
-          ),
-          dropdownColor: Colors.grey[900],
-          iconEnabledColor: Colors.white,
-          style: const TextStyle(color: Colors.white),
-        ),
-      ],
     );
   }
 
@@ -452,7 +634,6 @@ class _CreateSalesOrderScreenState extends State<CreateSalesOrderScreen> {
   }
 
   String _formatRupiah(double n) {
-    // Format sederhana: Rp 12,345.00 (tanpa paket intl)
     String s = n.toStringAsFixed(2);
     final parts = s.split('.');
     final head = parts.first;
@@ -481,19 +662,22 @@ class _CreateSalesOrderScreenState extends State<CreateSalesOrderScreen> {
 
 // ===== Model data produk =====
 class _ProductItem {
-  String? brand;
-  String? kategori;
-  String? produk;
-  String? warna;
+  int? brandId;
+  int? kategoriId;
+  int? produkId;
+  int? warnaId;
   double? hargaPerProduk;
   int? qty;
 
+  List<OptionItem> availableColors; // 🔥 tambahan
+
   _ProductItem({
-    this.brand,
-    this.kategori,
-    this.produk,
-    this.warna,
+    this.brandId,
+    this.kategoriId,
+    this.produkId,
+    this.warnaId,
     this.hargaPerProduk,
     this.qty,
+    this.availableColors = const [], // default kosong
   });
 }

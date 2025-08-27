@@ -16,15 +16,14 @@ class PaginationHandler extends Handlers
     public static ?string $resource = CustomerProgramResource::class;
 
     public function handler()
-    {
-        $paginator = QueryBuilder::for(static::getModel())
-            ->allowedFilters(['name','deskripsi'])
-            ->with(['company','customerCategories','customers','employees','orders'])
-            ->withCount(['customerCategories','customers','employees','orders'])
-            ->paginate($this->perPage(request()))
-            ->appends(request()->query())
-            ->through(fn ($prog) => new CustomerProgramTransformer($prog));
+{
+    $paginator = QueryBuilder::for(static::getModel())
+        ->allowedFilters(['name','deskripsi'])
+        ->select(['id','name','status']) // minimal kolom penting
+        ->paginate($this->perPage(request()))
+        ->appends(request()->query());
 
-        return static::sendSuccessResponse($paginator, 'Customer programs list retrieved successfully');
-    }
+    return static::sendSuccessResponse($paginator, 'Customer programs list retrieved successfully');
+}
+
 }

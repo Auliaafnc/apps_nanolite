@@ -13,11 +13,12 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use App\Models\Product;
 use Illuminate\Support\Facades\Mail;
 use App\Mail\OrderInvoiceMail;
-
+use App\Models\Concerns\OwnedByEmployee; // ⬅️ tambah
+use App\Models\Concerns\LatestFirst; 
 
 class Order extends Model
 {
-    use HasFactory;
+    use HasFactory, OwnedByEmployee, LatestFirst; // ⬅️ tambah
 
     protected $fillable = [
         'no_order',
@@ -48,26 +49,27 @@ class Order extends Model
         'order_excel',
     ];
 
-    
     protected $casts = [
-        'company_id'            => 'integer',
-        'customer_id'           => 'integer',
-        'employee_id'           => 'integer',
-        'department_id'           => 'integer',
+        'company_id'             => 'integer',
+        'customer_id'            => 'integer',
+        'employee_id'            => 'integer',
+        'department_id'          => 'integer',
         'customer_categories_id' => 'integer',
-        'customer_program_id'   => 'integer',
-        'products'              => 'array',
-        'address'               => 'array',
-        'diskon_1'              => 'float',
-        'diskon_2'              => 'float',
-        'diskons_enabled'       => 'boolean',
-        'program_enabled'       => 'boolean',
-        'reward_enabled'        => 'boolean',
+        'customer_program_id'    => 'integer',
+        'products'               => 'array',
+        'address'                => 'array',
+        'diskon_1'               => 'float',
+        'diskon_2'               => 'float',
+        'diskons_enabled'        => 'boolean',
+        'program_enabled'        => 'boolean',
+        'reward_enabled'         => 'boolean',
         'jumlah_program'         => 'integer',
-        'total_harga'           => 'integer',
-        'total_harga_after_tax' => 'integer',
-        'status'                => 'string',
+        'total_harga'            => 'integer',
+        'total_harga_after_tax'  => 'integer',
+        'status'                 => 'string',
     ];
+
+    protected $appends = ['invoice_pdf_url', 'invoice_excel_url'];
 
     protected static function booted()
     {
@@ -79,8 +81,6 @@ class Order extends Model
         static::updating(function (Order $order) {
             self::hitungHargaDanSubtotal($order);
         });
-        
-            
 
         static::saved(function (Order $order) {
             if (!is_array($order->products) || empty($order->products)) {
@@ -89,12 +89,11 @@ class Order extends Model
             }
 
             $html = view('invoices.order', compact('order'))->render();
-            $pdf = Pdf::loadHtml($html)->setPaper('a4', 'portrait');
+            $pdf  = Pdf::loadHtml($html)->setPaper('a4', 'portrait');
 
-            $fileName = "Order-{$order->no_order}.pdf";
-            Storage::disk('public')->put($fileName, $pdf->output());
-            $order->updateQuietly(['order_file' => $fileName]);
-
+            $pdfFileName = "Order-{$order->no_order}.pdf";
+            Storage::disk('public')->put($pdfFileName, $pdf->output());
+            $order->updateQuietly(['order_file' => $pdfFileName]);
 
             $excelFileName = "Order-{$order->no_order}.xlsx";
             Excel::store(new OrderExport($order), $excelFileName, 'public');
@@ -129,51 +128,31 @@ class Order extends Model
         $order->total_harga_after_tax = (int) round($totalAfter);
     }
 
-
-
-    // Relasi
-    public function company()
+    public function getInvoicePdfUrlAttribute(): ?string
     {
-        return $this->belongsTo(Company::class);
+        if (empty($this->order_file)) return null;
+        return url(Storage::disk('public')->url($this->order_file));
     }
 
-    public function department()
+    public function getInvoiceExcelUrlAttribute(): ?string
     {
-        return $this->belongsTo(Department::class, 'department_id');
-    }
-    
-    public function employee()
-    {
-        return $this->belongsTo(Employee::class);
+        if (empty($this->order_excel)) return null;
+        return url(Storage::disk('public')->url($this->order_excel));
     }
 
-    public function customer()
-    {
-        return $this->belongsTo(Customer::class);
-    }
+    public function company(){ return $this->belongsTo(Company::class); }
+    public function department(){ return $this->belongsTo(Department::class, 'department_id'); }
+    public function employee(){ return $this->belongsTo(Employee::class); }
+    public function customer(){ return $this->belongsTo(Customer::class); }
+    public function customerCategory(){ return $this->belongsTo(CustomerCategories::class, 'customer_categories_id'); }
+    public function customerProgram(){ return $this->belongsTo(CustomerProgram::class, 'customer_program_id'); }
 
-    public function customerCategory()
-    {
-        return $this->belongsTo(CustomerCategories::class, 'customer_categories_id');
-    }
-
-    public function customerProgram()
-    {
-        return $this->belongsTo(CustomerProgram::class, 'customer_program_id');
-    }
-
-    // Detail produk
     public function productsWithDetails(): array
     {
         $raw = $this->products;
-        if (is_string($raw)) {
-            $raw = json_decode($raw, true) ?: [];
-        } elseif (!is_array($raw)) {
-            $raw = [];
-        }
+        if (is_string($raw)) $raw = json_decode($raw, true) ?: [];
+        elseif (!is_array($raw)) $raw = [];
 
-
-    
         return array_map(function ($item) {
             $product = Product::find($item['produk_id'] ?? null);
 
@@ -200,7 +179,6 @@ class Order extends Model
             "{$i['brand_name']} – {$i['category_name']} – {$i['product_name']} – {$i['color']} – Rp"
             . number_format($i['price'], 0, ',', '.')
             . " – Qty: {$i['quantity']}"
-            
         )->implode('<br>');
     }
 

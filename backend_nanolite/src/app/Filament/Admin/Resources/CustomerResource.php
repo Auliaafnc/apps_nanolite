@@ -66,260 +66,167 @@ class CustomerResource extends Resource
     public static function form(Form $form): Form
     {
        return $form->schema([
-                Select::make('department_id')
-                    ->label('Department')
-                    ->reactive()
-                    ->afterStateUpdated(fn($state, callable $set) => [
-                        $set('employee_id', null),
-                    ])
-                    ->options(fn () => Department::where('status', 'active')->pluck('name', 'id'))
-                    ->required()
-                    ->searchable()
-                    ->preload()
-                    ->placeholder('Pilih Department'),
+            Select::make('department_id')
+                ->label('Department')
+                ->reactive()
+                ->afterStateUpdated(fn($state, callable $set) => [
+                    $set('employee_id', null),
+                ])
+                ->options(fn () => Department::where('status', 'active')->pluck('name', 'id'))
+                ->required()
+                ->searchable()
+                ->preload()
+                ->placeholder('Pilih Department'),
 
-                Select::make('employee_id')
-                    ->label('Karyawan')
-                    ->reactive()
-                    ->options(function (callable $get) {
-                        $departmentId = $get('department_id');
+            Select::make('employee_id')
+                ->label('Karyawan')
+                ->reactive()
+                ->options(function (callable $get) {
+                    $departmentId = $get('department_id');
+                    if (!$departmentId) return [];
+                    return Employee::where('status', 'active')
+                        ->where('department_id', $departmentId)
+                        ->pluck('name', 'id');
+                })
+                ->required()
+                ->searchable()
+                ->preload()
+                ->placeholder('Pilih Karyawan'),
 
-                        if (!$departmentId) return [];
+            TextInput::make('name')->label('Nama Customer')->required(),
+            TextInput::make('phone')->label('Telepon')->required(),
+            TextInput::make('email')->label('Email')->email()->nullable(),
 
-                        return Employee::where('status', 'active')
-                            ->where('department_id', $departmentId)
-                            ->pluck('name', 'id');
-                    })
-                    ->required()
-                    ->searchable()
-                    ->preload()
-                    ->placeholder('Pilih Karyawan'),
-                
+            Select::make('customer_categories_id')
+                ->label('Kategori Customer')
+                ->options(fn () => CustomerCategories::where('status', 'active')->pluck('name', 'id'))
+                ->preload()->searchable()->required(),
 
+            Select::make('customer_program_id')
+                ->label('Program Customer')
+                ->options(fn () => CustomerProgram::where('status', 'active')->pluck('name', 'id'))
+                ->preload()->searchable()->nullable(),
 
-        TextInput::make('name')
-            ->label('Nama Customer')
-            ->required(),
+            TextInput::make('gmaps_link')->label('Link Google Maps')->url()->nullable(),
 
-        TextInput::make('phone')
-            ->label('Telepon')
-            ->required(),
+            Repeater::make('address')
+                ->label('Alamat')
+                ->schema([
+                    Select::make('provinsi')
+                        ->label('Provinsi')
+                        ->options(fn () => Provinsi::pluck('name', 'code')->toArray())
+                        ->searchable()->reactive()
+                        ->afterStateUpdated(fn (callable $set) => $set('kota_kab', null)),
 
-        TextInput::make('email')
-            ->label('Email')
-            ->email()
-            ->nullable(),
+                    Select::make('kota_kab')
+                        ->label('Kota/Kabupaten')
+                        ->options(function (callable $get) {
+                            if ($prov = $get('provinsi')) {
+                                return Kabupaten::where('province_code', $prov)->pluck('name', 'code')->toArray();
+                            }
+                            return [];
+                        })
+                        ->searchable()->reactive()
+                        ->afterStateUpdated(fn (callable $set) => $set('kecamatan', null)),
 
-        Select::make('customer_categories_id')
-            ->label('Kategori Customer')
-            ->options(function () {
-                return CustomerCategories::where('status', 'active')->pluck('name', 'id');
-            })
-            ->preload()
-            ->searchable()
-            ->required(),
+                    Select::make('kecamatan')
+                        ->label('Kecamatan')
+                        ->options(function (callable $get) {
+                            if ($kab = $get('kota_kab')) {
+                                return Kecamatan::where('city_code', $kab)->pluck('name', 'code')->toArray();
+                            }
+                            return [];
+                        })
+                        ->searchable()->reactive()
+                        ->afterStateUpdated(fn (callable $set) => $set('kelurahan', null)),
 
-        Select::make('customer_program_id')
-            ->label('Program Customer')
-            ->options(function () {
-                return CustomerProgram::where('status', 'active')->pluck('name', 'id');
-            })
-            ->preload()
-            ->searchable()
-            ->nullable(),
+                    Select::make('kelurahan')
+                        ->label('Kelurahan')
+                        ->options(function (callable $get) {
+                            if ($kec = $get('kecamatan')) {
+                                return Kelurahan::where('district_code', $kec)->pluck('name', 'code')->toArray();
+                            }
+                            return [];
+                        })
+                        ->searchable()->reactive()
+                        ->afterStateUpdated(function (callable $set, $state) {
+                            $postal = \App\Models\PostalCode::where('village_code', $state)->first();
+                            $set('kode_pos', $postal?->postal_code ?? null);
+                        }),
 
-        TextInput::make('gmaps_link')
-            ->label('Link Google Maps')
-            ->url()
-            ->nullable(),
+                    TextInput::make('kode_pos')->label('Kode Pos')->readOnly(),
+                    Textarea::make('detail_alamat')->label('Detail Alamat')->rows(3)->required(),
+                ])
+                ->columns(3)->defaultItems(1)
+                ->disableItemCreation()->disableItemDeletion()->dehydrated(),
 
-        Repeater::make('address')
-            ->label('Alamat')
-            ->schema([
-                Select::make('provinsi')
-                    ->label('Provinsi')
-                    ->options(fn () => Provinsi::pluck('name', 'code')->toArray())
-                    ->searchable()
-                    ->reactive()
-                    ->afterStateUpdated(fn (callable $set) => $set('kota_kab', null)),
+            FileUpload::make('image')->label('Gambar')->image()->directory('customers')->nullable(),
 
+            Select::make('status_pengajuan')
+                ->label('Status Pengajuan')
+                ->options([
+                    'pending' => 'Pending',
+                    'approved' => 'Disetujui',
+                    'rejected' => 'Ditolak',
+                ])
+                ->default('pending')->visibleOn('edit')->searchable()->required(),
 
-                Select::make('kota_kab')
-                    ->label('Kota/Kabupaten')
-                    ->options(function (callable $get) {
-                        if ($prov = $get('provinsi')) {
-                            return Kabupaten::where('province_code', $prov)
-                                ->pluck('name', 'code')
-                                ->toArray();
-                        }
-                        return [];
-                    })
-                    ->searchable()
-                    ->reactive()
-                    ->afterStateUpdated(fn (callable $set) => $set('kecamatan', null)),
-                
-
-                Select::make('kecamatan')
-                    ->label('Kecamatan')
-                    ->options(function (callable $get) {
-                        if ($kab = $get('kota_kab')) {
-                            return Kecamatan::where('city_code', $kab)
-                                ->pluck('name', 'code')
-                                ->toArray();
-                        }
-                        return [];
-                    })
-                    ->searchable()
-                    ->reactive()
-                    ->afterStateUpdated(fn (callable $set) => $set('kelurahan', null)),
-                
-
-                Select::make('kelurahan')
-                    ->label('Kelurahan')
-                    ->options(function (callable $get) {
-                        if ($kec = $get('kecamatan')) {
-                            return Kelurahan::where('district_code', $kec)
-                                ->pluck('name', 'code')
-                                ->toArray();
-                        }
-                        return [];
-                    })
-                    ->searchable()
-                    ->reactive()
-                    ->afterStateUpdated(function (callable $set, $state) {
-                        // ambil dari PostalCodes
-                        $postal = \App\Models\PostalCode::where('village_code', $state)->first();
-                        $set('kode_pos', $postal?->postal_code ?? null);
-                    }),
-                
-                TextInput::make('kode_pos')
-                    ->label('Kode Pos')
-                    ->readOnly(),
-
-                Textarea::make('detail_alamat')
-                    ->label('Detail Alamat')
-                    ->rows(3)
-                    ->required(),
-            ])
-            ->columns(3)
-            ->defaultItems(1)
-            ->disableItemCreation()
-            ->disableItemDeletion()
-            ->dehydrated(),
-        
-        
-
-        FileUpload::make('image')
-            ->label('Gambar')
-            ->image()
-            ->directory('customers')
-            ->nullable(),
-
-        Select::make('status_pengajuan')
-            ->label('Status Pengajuan')
-            ->options([
-                'pending' => 'Pending',
-                'approved' => 'Disetujui',
-                'rejected' => 'Ditolak',
-            ])
-            ->default('pending')          
-            ->visibleOn('edit') 
-            ->searchable()          
-            ->required(),
-
-        Select::make('status')
-            ->label('Status Akun')
-            ->options([
-                'pending' => 'Pending',
-                'active'     => 'Aktif',
-                'non-active' => 'Tidak Aktif',
-            ])
-            ->default('pending')           
-            ->visibleOn('edit')   
-            ->searchable()       
-            ->required(),
-
-    ]);
-}
+            Select::make('status')
+                ->label('Status Akun')
+                ->options([
+                    'pending' => 'Pending',
+                    'active'     => 'Aktif',
+                    'non-active' => 'Tidak Aktif',
+                ])
+                ->default('pending')->visibleOn('edit')->searchable()->required(),
+        ]);
+    }
 
     public static function table(Table $table): Table
     {
         return $table
+            ->defaultSort('created_at', 'desc') // 🔥 terbaru dulu
             ->columns([
-                TextColumn::make('id')
-                    ->label('ID')
-                    ->sortable(),
+                TextColumn::make('id')->label('ID')->sortable(),
 
-                
-                TextColumn::make('department.name')
-                    ->label('Department')
-                    ->searchable()
-                    ->sortable(),
+                TextColumn::make('department.name')->label('Department')->searchable()->sortable(),
+                TextColumn::make('employee.name')->label('Karyawan')->searchable()->sortable(),
 
-                TextColumn::make('employee.name')
-                    ->label('Karyawan')
-                    ->searchable()
-                    ->sortable(),
+                TextColumn::make('name')->label('Nama')->searchable()->sortable(),
+                TextColumn::make('customerCategory.name')->label('Kategori Customer')->searchable()->sortable(),
 
-                TextColumn::make('name')
-                    ->label('Nama')
-                    ->searchable()
-                    ->sortable(),
-
-                TextColumn::make('customerCategory.name')
-                    ->label('Kategori Customer')
-                    ->searchable()
-                    ->sortable(),
-                
-                TextColumn::make('phone')
-                    ->label('Telepon'),
+                TextColumn::make('phone')->label('Telepon'),
 
                 TextColumn::make('email')
-                    ->label('Email')
-                    ->searchable()
-                    ->sortable()
+                    ->label('Email')->searchable()->sortable()
                     ->getStateUsing(fn ($record) => $record->email ?: '-')
                     ->sortable(),
 
+                TextColumn::make('full_address')->label('Alamat')->toggleable()->limit(50),
 
-
-                TextColumn::make('full_address')
-                    ->label('Alamat')
-                    ->toggleable()
-                    ->limit(50),
-                
                 TextColumn::make('gmaps_link')
                     ->label('Link Google Maps')
                     ->url(fn ($record) => $record->gmaps_link, true)
                     ->getStateUsing(fn ($record) => $record->gmaps_link ?: '-')
                     ->limit(30),
 
-                
                 TextColumn::make('customerProgram.name')
                     ->label('Program Customer')
                     ->getStateUsing(fn ($record) => $record->customerProgram->name ?? '-')
                     ->sortable(),
 
-
                 TextColumn::make('jumlah_program')
                     ->label('Program Point')
                     ->getStateUsing(fn ($record) => $record->jumlah_program ?? 0)
-                    ->sortable()
-                    ->alignCenter(),
-                    
-
-
+                    ->sortable()->alignCenter(),
 
                 TextColumn::make('reward_point')
                     ->label('Reward Point')
                     ->getStateUsing(fn ($record) => $record->reward_point ?? 0)
-                    ->sortable()
-                    ->alignCenter(),
-                
-                ImageColumn::make('image')
-                    ->label('Gambar')
-                    ->square(),
-                    
+                    ->sortable()->alignCenter(),
+
+                ImageColumn::make('image')->label('Gambar')->square(),
+
                 BadgeColumn::make('status_pengajuan')
                     ->label('Status Pengajuan')
                     ->formatStateUsing(fn(string $state): string => match($state) {
@@ -332,8 +239,7 @@ class CustomerResource extends Resource
                         'warning' => 'pending',
                         'success' => 'approved',
                         'danger'  => 'rejected',
-                    ])
-                    ->sortable(),
+                    ])->sortable(),
 
                 BadgeColumn::make('status')
                     ->label('Status Akun')
@@ -347,92 +253,54 @@ class CustomerResource extends Resource
                         'warning' => 'pending',
                         'success' => 'active',
                         'danger'  => 'non-active',
-                    ])
-                    ->sortable(),
-                
-                
+                    ])->sortable(),
 
-                TextColumn::make('created_at')
-                    ->label('Diajukan')
-                    ->dateTime('d M Y H:i')
-                    ->sortable(),
-
-                TextColumn::make('updated_at')
-                    ->label('Diupdate')
-                    ->dateTime('d M Y H:i')
-                    ->sortable(),
+                TextColumn::make('created_at')->label('Diajukan')->dateTime('d M Y H:i')->sortable(),
+                TextColumn::make('updated_at')->label('Diupdate')->dateTime('d M Y H:i')->sortable(),
             ])
-                ->filters([
-                    SelectFilter::make('status_pengajuan')
-                        ->label('Status Pengajuan')
-                        ->options([
-                            'pending'  => 'Pending',
-                            'approved' => 'Disetujui',
-                            'rejected' => 'Ditolak',
-                        ])
-                        ->searchable(),
+            ->filters([
+                SelectFilter::make('status_pengajuan')
+                    ->label('Status Pengajuan')
+                    ->options([
+                        'pending'  => 'Pending',
+                        'approved' => 'Disetujui',
+                        'rejected' => 'Ditolak',
+                    ])->searchable(),
 
-                    SelectFilter::make('status')
-                        ->label('Status Akun')
-                        ->options([
-                            'pending'  => 'Pending',
-                            'active' => 'Aktif',
-                            'non-active' => 'Tidak Aktif',
-                        ])
-                        ->searchable(),
-                ])
-
-
-
+                SelectFilter::make('status')
+                    ->label('Status Akun')
+                    ->options([
+                        'pending'  => 'Pending',
+                        'active' => 'Aktif',
+                        'non-active' => 'Tidak Aktif',
+                    ])->searchable(),
+            ])
             ->headerActions([
                 Action::make('export')
                     ->label('Export Data Customer')
                     ->form([
                         Grid::make(2)->schema([
-                             Select::make('department_id')
-                                ->label('Department')
-                                ->options(Department::pluck('name', 'id'))
-                                ->searchable()
-                                ->preload(),
+                            Select::make('department_id')->label('Department')
+                                ->options(Department::pluck('name', 'id'))->searchable()->preload(),
 
-                            Select::make('employee_id')
-                                ->label('Karyawan')
-                                ->options(Employee::pluck('name', 'id'))
-                                ->searchable()
-                                ->preload(),
+                            Select::make('employee_id')->label('Karyawan')
+                                ->options(Employee::pluck('name', 'id'))->searchable()->preload(),
 
-                            Select::make('customer_categories_id')
-                                ->label('Kategori Customer')
-                                ->options(CustomerCategories::pluck('name', 'id'))
-                                ->searchable()
-                                ->preload(),
+                            Select::make('customer_categories_id')->label('Kategori Customer')
+                                ->options(CustomerCategories::pluck('name', 'id'))->searchable()->preload(),
 
-                            Select::make('customer_program_id')
-                                ->label('Program')
-                                ->options(CustomerProgram::pluck('name', 'id'))
-                                ->searchable()
-                                ->preload(),
+                            Select::make('customer_program_id')->label('Program')
+                                ->options(CustomerProgram::pluck('name', 'id'))->searchable()->preload(),
 
-                            Select::make('status_pengajuan')
-                                ->label('Status Pengajuan')
-                                ->options([
-                                    'pending' => 'Pending',
-                                    'approved' => 'Approved',
-                                    'rejected' => 'Rejected',
-                                ])
+                            Select::make('status_pengajuan')->label('Status Pengajuan')
+                                ->options(['pending' => 'Pending','approved' => 'Approved','rejected' => 'Rejected'])
                                 ->searchable(),
 
-                            Select::make('status')
-                                ->label('Status Akun')
-                                ->options([
-                                    'active' => 'Aktif',
-                                    'non-active' => 'Nonaktif',
-                                ])
+                            Select::make('status')->label('Status Akun')
+                                ->options(['active' => 'Aktif','non-active' => 'Nonaktif'])
                                 ->searchable(),
 
-                            Checkbox::make('export_all')
-                                ->label('Print Semua Data')
-                                ->reactive(),
+                            Checkbox::make('export_all')->label('Print Semua Data')->reactive(),
                         ])
                     ])
                     ->action(function (array $data) {
@@ -443,17 +311,13 @@ class CustomerResource extends Resource
                             \Filament\Notifications\Notification::make()
                                 ->title('Data Customer Tidak Ditemukan')
                                 ->body('Tidak ditemukan data berdasarkan filter yang Anda pilih.')
-                                ->danger()
-                                ->send();
-
+                                ->danger()->send();
                             return null;
                         }
 
                         return Excel::download($export, 'export_customer.xlsx');
                     })
             ])
-
-
             ->actions([
                 Tables\Actions\ViewAction::make(),
                 Tables\Actions\EditAction::make(),
@@ -469,9 +333,7 @@ class CustomerResource extends Resource
 
     public static function getRelations(): array
     {
-        return [
-            // Tambahkan jika ada relasi seperti orders
-        ];
+        return [];
     }
 
     public static function getPages(): array

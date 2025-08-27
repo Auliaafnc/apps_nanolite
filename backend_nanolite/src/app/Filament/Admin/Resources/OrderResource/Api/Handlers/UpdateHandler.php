@@ -8,7 +8,7 @@ use Rupadana\ApiService\Http\Handlers;
 
 class UpdateHandler extends Handlers
 {
-    public static ?string $uri = '/{id}';
+    public static ?string $uri = '/{record}';
 
     public static ?string $resource = OrderResource::class;
 
@@ -24,23 +24,17 @@ class UpdateHandler extends Handlers
 
     /**
      * Update Order
-     *
-     * @return \Illuminate\Http\JsonResponse
      */
-    public function handler(UpdateOrderRequest $request)
+    public function handler(UpdateOrderRequest $request, $record)
     {
-        $id = $request->route('id');
+        $model = $record;
 
-        $model = static::getModel()::find($id);
-
-        if (! $model) {
-            return static::sendNotFoundResponse();
-        }
-
-        $model->fill($request->all());
+        // isi semua field
+        $data = $request->all();
+        $model->fill($data);
 
         $model->save();
 
-        return static::sendSuccessResponse($model, 'Successfully Update Resource');
+        return static::sendSuccessResponse($model, 'Successfully Update Order');
     }
 }

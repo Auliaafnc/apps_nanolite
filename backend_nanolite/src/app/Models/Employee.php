@@ -9,10 +9,11 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\EmployeeExport;
 use Illuminate\Support\Str;
+use App\Models\Concerns\LatestFirst; 
 
 class Employee extends Model
 {
-    use HasFactory;
+    use HasFactory, LatestFirst;
 
     protected $fillable = [
         'company_id',

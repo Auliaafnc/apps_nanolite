@@ -24,17 +24,17 @@ class CreateHandler extends Handlers
 
     /**
      * Create Order
-     *
-     * @return \Illuminate\Http\JsonResponse
      */
     public function handler(CreateOrderRequest $request)
     {
         $model = new (static::getModel());
 
-        $model->fill($request->all());
+        // isi semua field (Order tidak ada image)
+        $data = $request->all();
+        $model->fill($data);
 
         $model->save();
 
-        return static::sendSuccessResponse($model, 'Successfully Create Resource');
+        return static::sendSuccessResponse($model, 'Successfully Create Order');
     }
 }

@@ -6,6 +6,11 @@ use App\Http\Controllers\Api\AuthController;
 use Rupadana\ApiService\Facades\ApiService;
 use App\Filament\Admin\Resources\CustomerResource;
 
+use Laravolt\Indonesia\Models\Province;
+use Laravolt\Indonesia\Models\City;
+use Laravolt\Indonesia\Models\District;
+use Laravolt\Indonesia\Models\Village;
+
 // Handlers Category
 use App\Filament\Admin\Resources\CategoryResource\Api\Handlers\CreateHandler      as CategoryCreateHandler;
 use App\Filament\Admin\Resources\CategoryResource\Api\Handlers\PaginationHandler as CategoryPaginationHandler;
@@ -198,9 +203,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/{id}',    [CustomerProgramUpdateHandler::class,     'handler'])->name('api.customer_programs.update');
         Route::delete('/{id}', [CustomerProgramDeleteHandler::class,     'handler'])->name('api.customer_categories.delete');
     });
-    
+
     
 });
+
+
 
 ApiService::routes(function () {
     CustomerResource::routes();

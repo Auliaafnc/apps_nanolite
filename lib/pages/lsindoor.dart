@@ -1,7 +1,6 @@
 // lib/pages/lsindoor.dart
 import 'package:flutter/material.dart';
 
-import 'categories_nano.dart';
 import 'create_sales_order.dart';
 import 'home.dart';
 import 'profile.dart';
@@ -99,7 +98,6 @@ class LSIndoorPage extends StatelessWidget {
                     row('Hemat Energi', '90%'),
                     row('CRI', '>80'),
                     row('IP', '33'),
-                    row('Tegangan', 'DC 12V'),
                   ],
                 ),
               ),
@@ -155,8 +153,7 @@ class LSIndoorPage extends StatelessWidget {
             alignment: Alignment.center,
             color: blue6500,
             padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: Text(t,
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, height: 1.1)),
+            child: Text(t, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, height: 1.1)),
           ),
         );
 
@@ -176,25 +173,22 @@ class LSIndoorPage extends StatelessWidget {
       return tdBlue(temp); // default 6500K
     }
 
-    // ===== TABEL VARIAN (urut: 3000K → 6500K) =====
+    // ===== TABEL VARIAN (7 kolom) =====
     Widget specTable() {
-      // Kolom: Watt/m | Lumen | Ukuran | Harga | Warna | Keterangan | Warna | Keterangan | Isi/Dus
+      // Kolom: Watt/m | Lumen | Ukuran | Harga | Warna | Keterangan | Isi/Dus
       const rows = [
-        ['9 w/m', '120 lm/watt', '5000mm × 8mm × 3mm', 'Rp 160.900', '3000K', 'Cahaya Putih Kekuningan', '6500K', 'Cahaya Putih Kebiruan', '40'],
-        ['9 w/m', '120 lm/watt', '5000mm × 8mm × 3mm', 'Rp 160.900', '3000K', 'Cahaya Putih Kekuningan', '6500K', 'Cahaya Putih Kebiruan', '40'],
+        ['9 w/m', '120 lm/watt', '5000mm × 8mm × 3mm', 'Rp 160.900', '3000K', 'Cahaya Putih Kekuningan', '40'],
+        ['9 w/m', '120 lm/watt', '5000mm × 8mm × 3mm', 'Rp 160.900', '6500K', 'Cahaya Putih Kebiruan', '40'],
       ];
 
-      // Lebar kolom: fixed (HP) / flex (Tablet)
       const phoneWidths = <int, TableColumnWidth>{
-        0: FixedColumnWidth(110), // Watt/m
-        1: FixedColumnWidth(120), // Lumen
-        2: FixedColumnWidth(210), // Ukuran
-        3: FixedColumnWidth(130), // Harga
-        4: FixedColumnWidth(90),  // Warna 1
-        5: FixedColumnWidth(180), // Ket 1
-        6: FixedColumnWidth(90),  // Warna 2
-        7: FixedColumnWidth(180), // Ket 2
-        8: FixedColumnWidth(90),  // Isi/Dus
+        0: FixedColumnWidth(110),
+        1: FixedColumnWidth(120),
+        2: FixedColumnWidth(210),
+        3: FixedColumnWidth(130),
+        4: FixedColumnWidth(90),
+        5: FixedColumnWidth(180),
+        6: FixedColumnWidth(90),
       };
       final tabletWidths = <int, TableColumnWidth>{
         0: const FlexColumnWidth(1.0),
@@ -204,8 +198,6 @@ class LSIndoorPage extends StatelessWidget {
         4: const FlexColumnWidth(0.9),
         5: const FlexColumnWidth(1.4),
         6: const FlexColumnWidth(0.9),
-        7: const FlexColumnWidth(1.4),
-        8: const FlexColumnWidth(0.9),
       };
 
       final table = Table(
@@ -223,8 +215,6 @@ class LSIndoorPage extends StatelessWidget {
             th('Harga'),
             th('Warna'),
             th('Keterangan'),
-            th('Warna'),
-            th('Keterangan'),
             th('Isi/Dus'),
           ]),
           for (final r in rows)
@@ -237,9 +227,7 @@ class LSIndoorPage extends StatelessWidget {
                 td(r[3]),
                 badge(r[4]),
                 td(r[5]),
-                badge(r[6]),
-                td(r[7]),
-                td(r[8]),
+                td(r[6]),
               ],
             ),
         ],
@@ -255,7 +243,7 @@ class LSIndoorPage extends StatelessWidget {
               : SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(minWidth: 1140),
+                    constraints: const BoxConstraints(minWidth: 940),
                     child: table,
                   ),
                 ),
@@ -263,7 +251,7 @@ class LSIndoorPage extends StatelessWidget {
       );
     }
 
-    // ===== Gambar perbandingan (panel rounded) =====
+    // Gambar perbandingan (panel rounded)
     Widget roundedImage(String path, double h) => ClipRRect(
           borderRadius: BorderRadius.circular(16),
           child: Container(
@@ -287,7 +275,7 @@ class LSIndoorPage extends StatelessWidget {
             } else {
               Navigator.pushReplacement(
                 context,
-                MaterialPageRoute(builder: (_) => const CategoriesNanoScreen()),
+                MaterialPageRoute(builder: (_) => HomeScreen()),
               );
             }
           },
@@ -299,11 +287,13 @@ class LSIndoorPage extends StatelessWidget {
         children: [
           brandChip(),
           SizedBox(height: vPad),
-          Text('Product Light Strip Indoor',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: isTablet ? 18 : 16)),
+          Text(
+            'Product Light Strip Indoor',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: isTablet ? 18 : 16),
+          ),
           SizedBox(height: vPad),
 
-          // HERO (row di tablet, stack di HP)
+          // HERO
           LayoutBuilder(builder: (context, c) {
             final row = isTablet && c.maxWidth >= 680;
             final img = productImage();
@@ -314,12 +304,12 @@ class LSIndoorPage extends StatelessWidget {
 
           SizedBox(height: vPad),
 
-          // TABLE (gaya Bulb)
+          // TABLE
           specTable(),
 
           SizedBox(height: vPad * 1.5),
 
-          // Perbandingan (dua gambar)
+          // Perbandingan
           LayoutBuilder(builder: (context, c) {
             final twoCols = isTablet && c.maxWidth >= 680;
             final left = roundedImage('assets/images/innano.jpg', isTablet ? 220 : 170);
@@ -330,16 +320,13 @@ class LSIndoorPage extends StatelessWidget {
         ],
       ),
 
-      // ===== Bottom nav: pill abu-abu (gaya Bulb) =====
+      // Bottom nav (pill abu-abu)
       bottomNavigationBar: Container(
         color: bgPage,
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            color: Colors.grey[300],
-            borderRadius: BorderRadius.circular(40),
-          ),
+          decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(40)),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
@@ -359,7 +346,7 @@ class LSIndoorPage extends StatelessWidget {
     );
   }
 
-  // ===== Bottom nav item (gaya Bulb) =====
+  // Bottom nav item
   Widget _navItem(BuildContext context, IconData icon, String label, {VoidCallback? onPressed}) {
     final bool isTablet = MediaQuery.of(context).size.shortestSide >= 600;
     final double iconSize = isTablet ? 32 : 28;

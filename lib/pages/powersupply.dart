@@ -1,5 +1,5 @@
+// lib/pages/power_supply.dart
 import 'package:flutter/material.dart';
-import 'package:mobile_nano/pages/categories_nano.dart';
 
 import 'create_sales_order.dart';
 import 'home.dart';
@@ -10,186 +10,212 @@ class PowerSupplyPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // ---- PALETTE ----
-    const Color bgTop = Color(0xFF0B2741);
-    const Color bgBottom = Color(0xFF0E3556);
-    const Color card = Color(0xFF0F2D4B);
-    const Color chip = Color(0xFF163E66);
-    const Color textPrimary = Colors.white;
-    const Color whiteColor = Colors.white;
-    const Color blackColor = Colors.black;
+    // === Palet & panel (persis Bulb) ===
+    const Color bgPage = Color(0xFF0A1B2D);
+    const Color headerLight = Color(0xFFE9ECEF);
+    const Color cardDark = Color(0xFF0F2741);
 
-    // Warna khusus isi tabel (dari gambar kamu)
-    const Color tableCellBg = Color(0xFF0B2741);
-
-    // ---- RESPONSIVE ----
-    final size = MediaQuery.of(context).size;
-    final bool isTablet = size.width >= 600;
+    final bool isTablet = MediaQuery.of(context).size.width >= 600;
     final double hPad = isTablet ? 24 : 16;
     final double vPad = isTablet ? 18 : 12;
 
-    // Gambar lebih besar di tablet
-    final double productCardH = isTablet ? 380 : 220;
-
-    // ---- HELPERS ----
+    // Brand chip (abu-abu, icon/teks hitam)
     Widget brandChip() => Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(color: chip, borderRadius: BorderRadius.circular(32)),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.grey[300],
+            borderRadius: BorderRadius.circular(24),
+          ),
           child: const Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.lightbulb_outline, color: Colors.white),
+              Icon(Icons.lightbulb, color: Colors.black),
               SizedBox(width: 8),
-              Text('Nanolite', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+              Text('Nanolite', style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600)),
             ],
           ),
         );
 
-    Widget productImage(String path) => Container(
-          height: productCardH,
-          decoration: BoxDecoration(color: card, borderRadius: BorderRadius.circular(18)),
-          padding: const EdgeInsets.all(16),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Image.asset(
-              path, // contoh: assets/images/psupply.jpg
-              fit: BoxFit.contain,
-              errorBuilder: (_, __, ___) =>
-                  const Center(child: Icon(Icons.broken_image, color: Colors.white70, size: 48)),
+    // HERO image saja: panel gelap + radius, dan ditaruh di tengah
+    Widget productImage() => Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 520),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
+              child: Container(
+                color: cardDark,
+                padding: const EdgeInsets.all(16),
+                child: Center(
+                  child: Image.asset(
+                    'assets/images/psupply.jpg', // ganti jika nama aset berbeda
+                    width: isTablet ? 420 : 300,
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ),
             ),
           ),
         );
 
-    // -------- TABLE UTILS --------
-    Widget th(String text) => Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-          color: whiteColor, // header putih
-          alignment: Alignment.center,
-          child: Text(
-            text,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: Colors.black, // teks hitam
-              fontWeight: FontWeight.w800,
-              fontSize: 12,
+    // ====== util sel tabel (gaya Bulb) ======
+    Widget th(String t) => ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 44),
+          child: Container(
+            color: headerLight,
+            alignment: Alignment.center,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Text(
+              t,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w700, height: 1.1),
             ),
           ),
         );
 
-    Widget tdColor(String text, Color bg, {bool dark = false}) => Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-          alignment: Alignment.center,
-          color: bg,
-          child: Text(
-            text,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: dark ? blackColor : whiteColor,
-              fontWeight: FontWeight.w800,
-              fontSize: 12,
+    Widget td(String t) => ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 42),
+          child: Container(
+            alignment: Alignment.center,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Text(
+              t,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, height: 1.1),
             ),
           ),
         );
 
+    // ====== Tabel varian (disesuaikan untuk Power Supply) ======
     Widget specTable() {
+      // Kolom: Input | Output | Dimensi | Harga | Isi/Dus
+      const rows = [
+        ['100–240Vac', '+12V = 5A (60W Max)', '114 × 28 × 47 mm', 'Rp 181.900', '100'],
+      ];
+
+      // Lebar kolom: fixed (HP) / flex (Tablet)
+      const phoneWidths = <int, TableColumnWidth>{
+        0: FixedColumnWidth(130), // Input
+        1: FixedColumnWidth(200), // Output
+        2: FixedColumnWidth(180), // Dimensi
+        3: FixedColumnWidth(120), // Harga
+        4: FixedColumnWidth(90),  // Isi/Dus
+      };
+      final tabletWidths = <int, TableColumnWidth>{
+        0: const FlexColumnWidth(1.1),
+        1: const FlexColumnWidth(1.6),
+        2: const FlexColumnWidth(1.3),
+        3: const FlexColumnWidth(1.0),
+        4: const FlexColumnWidth(0.8),
+      };
+
       final table = Table(
+        columnWidths: isTablet ? tabletWidths : phoneWidths,
         defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-        border: TableBorder.all(color: Colors.white24, width: 1),
-        columnWidths: const {
-          0: FixedColumnWidth(220), // Input
-          1: FixedColumnWidth(260), // Output
-          2: FixedColumnWidth(260), // Lumen
-        },
+        border: const TableBorder.symmetric(
+          inside: BorderSide(color: Colors.white24, width: 1),
+          outside: BorderSide(color: Colors.white24, width: 1),
+        ),
         children: [
           TableRow(children: [
             th('Input'),
             th('Output'),
-            th('Lumen'),
+            th('Dimensi'),
+            th('Harga'),
+            th('Isi/Dus'),
           ]),
-          TableRow(children: [
-            tdColor('100-240Vac', tableCellBg), // Input
-            tdColor('+12V=5A 60W Max', tableCellBg), // Output
-            tdColor('114mm x 28mm x 47mm', tableCellBg), // Lumen
-          ]),
+          for (final r in rows)
+            TableRow(
+              decoration: const BoxDecoration(color: bgPage),
+              children: [
+                td(r[0]),
+                td(r[1]),
+                td(r[2]),
+                td(r[3]),
+                td(r[4]),
+              ],
+            ),
         ],
       );
 
-      return Container(
-        decoration: BoxDecoration(color: card, borderRadius: BorderRadius.circular(18)),
-        padding: const EdgeInsets.all(10),
-        child: SingleChildScrollView(scrollDirection: Axis.horizontal, child: table),
+      // Panel tabel rounded + scroll horizontal di HP
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          color: cardDark,
+          padding: const EdgeInsets.all(10),
+          child: isTablet
+              ? table
+              : SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: ConstrainedBox(
+                    // total ≈ 130+200+180+120+90 = 720
+                    constraints: const BoxConstraints(minWidth: 720),
+                    child: table,
+                  ),
+                ),
+        ),
       );
     }
 
-    // ---- PAGE ----
+    // ===== PAGE =====
     return Scaffold(
-      backgroundColor: bgBottom,
+      backgroundColor: bgPage,
       appBar: AppBar(
         backgroundColor: Colors.grey[200],
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () {
-            if (Navigator.of(context).canPop()) {
-              Navigator.of(context).pop();
-            } else {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (_) => const CategoriesNanoScreen()),
-              );
-            }
-          },
+          onPressed: () => Navigator.pop(context),
         ),
         title: const Text('nanopiko', style: TextStyle(color: Colors.black)),
-        centerTitle: false,
+      ),
+      body: ListView(
+        padding: EdgeInsets.fromLTRB(hPad, vPad, hPad, vPad + 16),
+        children: [
+          brandChip(),
+          SizedBox(height: vPad),
+          Text(
+            'Product Power Supply',
+            style: TextStyle(
+              fontSize: isTablet ? 18 : 16,
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          SizedBox(height: vPad),
+
+          // Hanya gambar di tengah (tanpa kartu spesifikasi)
+          productImage(),
+
+          SizedBox(height: vPad),
+
+          // Tabel spesifikasi singkat
+          specTable(),
+        ],
       ),
 
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [bgTop, bgBottom]),
-        ),
-        child: ListView(
-          padding: EdgeInsets.fromLTRB(hPad, vPad, hPad, vPad + 16),
-          children: [
-            brandChip(),
-            SizedBox(height: vPad),
-
-            Text('Product Power Supply',
-                style: TextStyle(color: textPrimary, fontWeight: FontWeight.w700, fontSize: isTablet ? 18 : 16)),
-            SizedBox(height: vPad),
-
-            // Hanya gambar
-            productImage('assets/images/psupply.jpg'),
-
-            SizedBox(height: vPad),
-
-            // Hanya tabel
-            specTable(),
-          ],
-        ),
-      ),
-
-      // Bottom Navigation (kapsul)
-      bottomNavigationBar: SafeArea(
-        top: false,
+      // Bottom nav (pill abu-abu — persis Bulb)
+      bottomNavigationBar: Container(
+        color: bgPage,
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
         child: Container(
-          margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
+          padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            color: Colors.grey[200],
-            borderRadius: BorderRadius.circular(28),
-            boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, -2))],
+            color: Colors.grey[300],
+            borderRadius: BorderRadius.circular(40),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _navItem(Icons.home, 'Home', onTap: () {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => HomeScreen()));
+              _navItem(context, Icons.home, 'Home', onPressed: () {
+                Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => HomeScreen()));
               }),
-              _navItem(Icons.shopping_cart, 'Create Order', onTap: () {
+              _navItem(context, Icons.shopping_cart, 'Create Order', onPressed: () {
                 Navigator.push(context, MaterialPageRoute(builder: (_) => CreateSalesOrderScreen()));
               }),
-              _navItem(Icons.person, 'Profile', onTap: () {
+              _navItem(context, Icons.person, 'Profile', onPressed: () {
                 Navigator.push(context, MaterialPageRoute(builder: (_) => ProfileScreen()));
               }),
             ],
@@ -198,20 +224,23 @@ class PowerSupplyPage extends StatelessWidget {
       ),
     );
   }
-}
 
-// Bottom nav item (reusable)
-Widget _navItem(IconData icon, String label, {required VoidCallback onTap}) {
-  return InkWell(
-    onTap: onTap,
-    borderRadius: BorderRadius.circular(12),
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, color: Colors.black87),
-        const SizedBox(height: 4),
-        Text(label, style: const TextStyle(color: Colors.black87, fontSize: 12)),
-      ],
-    ),
-  );
+  // Bottom-nav item (persis Bulb)
+  Widget _navItem(BuildContext context, IconData icon, String label, {VoidCallback? onPressed}) {
+    final bool isTablet = MediaQuery.of(context).size.shortestSide >= 600;
+    final double iconSize = isTablet ? 32 : 28;
+    final double fontSize = isTablet ? 14 : 12;
+
+    return InkWell(
+      onTap: onPressed,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: iconSize, color: const Color(0xFF0A1B2D)),
+          const SizedBox(height: 4),
+          Text(label, style: TextStyle(color: const Color(0xFF0A1B2D), fontSize: fontSize)),
+        ],
+      ),
+    );
+  }
 }

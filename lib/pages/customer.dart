@@ -3,6 +3,9 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../models/customer.dart';
 import '../services/api_service.dart';
+import '../widgets/clickable_thumb.dart';
+import 'package:apps_nanolite/services/api_service.dart';
+
 
 import 'create_customer.dart';
 import 'create_sales_order.dart';
@@ -29,7 +32,7 @@ class _CustomerScreenState extends State<CustomerScreen> {
     if (_q.isEmpty) return _all;
     return _all.where((c) {
       final blob =
-          '${c.department} ${c.employee} ${c.name} ${c.categoryName} ${c.phone} ${c.email ?? ''} ${c.alamat ?? ''} ${c.programName} ${c.status}'
+          '${c.departmentName ?? ''} ${c.employeeName ?? ''} ${c.name} ${c.categoryName ?? ''} ${c.phone} ${c.email ?? ''} ${c.alamatDisplay} ${c.programName ?? ''} ${c.status}'
               .toLowerCase();
       return blob.contains(_q);
     }).toList();
@@ -63,12 +66,98 @@ class _CustomerScreenState extends State<CustomerScreen> {
   }
 
   Future<void> _openUrl(String? url) async {
-    if (url == null || url.isEmpty || url == '-') return;
-    final uri = Uri.tryParse(url);
-    if (uri == null) return;
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri, mode: LaunchMode.externalApplication);
+  if (url == null || url.isEmpty || url == '-') return;
+
+  // coba ganti jadi Uri
+  final uri = Uri.tryParse(url);
+  if (uri == null) return;
+
+  // kalau bisa, langsung buka aplikasi Google Maps
+  final mapsUrl = Uri.parse("geo:0,0?q=${Uri.encodeComponent(url)}");
+
+  if (await canLaunchUrl(mapsUrl)) {
+    await launchUrl(mapsUrl, mode: LaunchMode.externalApplication);
+  } else if (await canLaunchUrl(uri)) {
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+}
+
+
+  // Format tanggal sederhana (YYYY-MM-DD HH:mm)
+  String? _fmtDate(DateTime? d) {
+    if (d == null) return null;
+    final y = d.year.toString().padLeft(4, '0');
+    final m = d.month.toString().padLeft(2, '0');
+    final day = d.day.toString().padLeft(2, '0');
+    final hh = d.hour.toString().padLeft(2, '0');
+    final mm = d.minute.toString().padLeft(2, '0');
+    return '$y-$m-$day $hh:$mm';
+  }
+
+  // ===== Status chip (gaya sama Garansi/Return) =====
+  Widget _statusChip(String raw) {
+    final v = (raw.isEmpty ? '-' : raw).toLowerCase();
+    String label;
+    Color bg;
+
+    switch (v) {
+      // pola seperti garansi / approval
+      case 'approved':
+      case 'disetujui':
+      case 'approve':
+      case 'acc':
+        label = 'Disetujui';
+        bg = Colors.green.withOpacity(0.18);
+        break;
+      case 'rejected':
+      case 'ditolak':
+      case 'reject':
+      case 'tolak':
+        label = 'Ditolak';
+        bg = Colors.red.withOpacity(0.18);
+        break;
+      case 'pending':
+      case 'menunggu':
+        label = 'Pending';
+        bg = Colors.amber.withOpacity(0.18);
+        break;
+
+      // pola umum customer
+      case 'active':
+      case 'aktif':
+        label = 'Aktif';
+        bg = Colors.green.withOpacity(0.18);
+        break;
+      case 'inactive':
+      case 'nonaktif':
+      case 'non-aktif':
+      case 'disabled':
+        label = 'Nonaktif';
+        bg = Colors.grey.withOpacity(0.22);
+        break;
+      case 'suspended':
+      case 'blocked':
+      case 'blokir':
+        label = 'Diblokir';
+        bg = Colors.red.withOpacity(0.18);
+        break;
+
+      case '-':
+      default:
+        label = raw.isEmpty ? '-' : raw;
+        bg = Colors.amber.withOpacity(0.18);
+        break;
     }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: Colors.white24),
+      ),
+      child: Text(label, style: const TextStyle(fontSize: 12, color: Colors.white)),
+    );
   }
 
   @override
@@ -202,7 +291,6 @@ class _CustomerScreenState extends State<CustomerScreen> {
               _navItem(context, Icons.person, 'Profile', onPressed: () {
                 Navigator.push(
                   context,
-                  // NOTE: tanpa `const` biar aman kalau constructor ProfileScreen belum const
                   MaterialPageRoute(builder: (_) => ProfileScreen()),
                 );
               }),
@@ -315,43 +403,55 @@ class _CustomerScreenState extends State<CustomerScreen> {
               ));
           return DataRow(
             cells: [
-              t(c.department),
-              t(c.employee),
+              t(c.departmentName),
+              t(c.employeeName),
               t(c.name),
               t(c.categoryName),
               t(c.phone),
               t(c.email),
-              t(c.alamat),
+              t(c.alamatDisplay),
               DataCell(
-                InkWell(
-                  onTap: () => _openUrl(c.maps),
-                  child: Text(
-                    (c.maps == null || c.maps!.isEmpty) ? '-' : 'Open',
-                    style: const TextStyle(
-                      decoration: TextDecoration.underline,
-                    ),
-                  ),
-                ),
-              ),
-              t(c.programName == '-' ? '-' : c.programName),
-              t(c.programPoint.toString()),
-              t(c.rewardPoint.toString()),
-              DataCell(
-                (c.image == null || c.image!.isEmpty)
+                (c.gmapsLink == null || c.gmapsLink!.isEmpty)
                     ? const Text('-')
-                    : ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: Image.network(
-                          c.image!,
-                          width: 48,
-                          height: 48,
-                          fit: BoxFit.cover,
+                    : InkWell(
+                        onTap: () => _openUrl(c.gmapsLink),
+                        child: Text(
+                          c.gmapsLink!,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            decoration: TextDecoration.underline,
+                            color: Colors.blue,
+                          ),
                         ),
                       ),
               ),
-              t(c.status),
-              t(c.createdAt),
-              t(c.updatedAt),
+              t(c.programName),
+              t(c.programPoint.toString()),
+              t(c.rewardPoint.toString()),
+              // ==== Gambar bulat & klik ====
+             
+              DataCell(
+              (c.images.isEmpty)
+                  ? const Text('-')
+                  : Row(
+                      children: c.images.map((url) {
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 4),
+                          child: ClickableThumb(
+                            url: url,
+                            heroTag: 'customer_${c.id}_${url.hashCode}',
+                            size: 36,
+                          ),
+                        );
+                      }).toList(),
+                    ),
+              ),
+
+
+              // ==== STATUS pakai chip ====
+              DataCell(_statusChip(c.status)),
+              t(_fmtDate(c.createdAt)),
+              t(_fmtDate(c.updatedAt)),
             ],
           );
         }).toList(),

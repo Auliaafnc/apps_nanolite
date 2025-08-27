@@ -1,104 +1,169 @@
+import 'dart:convert';
+
 class Customer {
-  final String? department;
-  final String? employee;
-  final String? name;
+  final int id;
+  final int? companyId;
+  final int? departmentId;
+  final int? employeeId;
+  final int? categoryId;
+  final int? programId;
+
+  final String? departmentName;
+  final String? employeeName;
   final String? categoryName;
-  final String? phone;
-  final String? email;
-  final String? alamat;   // full address
-  final String? maps;     // gmaps link
   final String? programName;
+
+  final String name;
+  final String phone;
+  final String? email;
+
+  final List<Map<String, dynamic>> addressDetail; // ⬅️ alamat detail array
+  final String? alamat; // ⬅️ full alamat dari backend
+
+  final String? gmapsLink;
   final int programPoint;
   final int rewardPoint;
-  final String? image;    // full URL
-  final String? status;   // Pending/Disetujui/Ditolak/Active/etc.
-  final String? createdAt;
-  final String? updatedAt;
+  final String status;
+  final String? statusPengajuan;
 
-  Customer({
-    this.department,
-    this.employee,
-    this.name,
+  final List<String> images;
+
+  final DateTime? createdAt;
+  final DateTime? updatedAt;
+
+  const Customer({
+    required this.id,
+    this.companyId,
+    this.departmentId,
+    this.employeeId,
+    this.categoryId,
+    this.programId,
+    this.departmentName,
+    this.employeeName,
     this.categoryName,
-    this.phone,
-    this.email,
-    this.alamat,
-    this.maps,
     this.programName,
-    this.programPoint = 0,
-    this.rewardPoint = 0,
-    this.image,
-    this.status,
+    required this.name,
+    required this.phone,
+    this.email,
+    this.addressDetail = const [],
+    this.alamat,
+    this.gmapsLink,
+    required this.programPoint,
+    required this.rewardPoint,
+    required this.status,
+    this.statusPengajuan,
+    this.images = const [],
     this.createdAt,
     this.updatedAt,
   });
 
-  // helper: ambil string pertama yang ada
-  static String? _s(Map<String, dynamic> j, List<String> keys) {
-    for (final k in keys) {
-      final v = j[k];
-      if (v == null) continue;
-      final s = v.toString();
-      if (s.isEmpty || s == 'null') continue;
-      return s;
-    }
-    return null;
+  // ---------- Utils ----------
+  static int _toInt(dynamic v, {int def = 0}) {
+    if (v is int) return v;
+    return int.tryParse(v?.toString() ?? '') ?? def;
   }
 
-  // helper: ambil int pertama yang ada
-  static int _i(Map<String, dynamic> j, List<String> keys) {
-    for (final k in keys) {
-      final v = j[k];
-      if (v is int) return v;
-      if (v is String) {
-        final p = int.tryParse(v);
-        if (p != null) return p;
+  static int? _toIntOrNull(dynamic v) {
+    if (v == null) return null;
+    if (v is int) return v;
+    return int.tryParse(v.toString());
+  }
+
+  static String _toString(dynamic v, {String def = ''}) {
+    return (v ?? def).toString();
+  }
+
+  static String? _optString(dynamic v) {
+    if (v == null) return null;
+    final s = v.toString().trim();
+    return s.isEmpty ? null : s;
+  }
+
+  static DateTime? _parseDate(dynamic v) {
+    if (v == null) return null;
+    try {
+      return DateTime.tryParse(v.toString());
+    } catch (_) {
+      return null;
+    }
+  }
+
+  static List<Map<String, dynamic>> _toAddressList(dynamic v) {
+    if (v is List) {
+      return v.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+    }
+    if (v is String && v.trim().isNotEmpty) {
+      try {
+        final decoded = jsonDecode(v);
+        if (decoded is List) {
+          return decoded.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+        }
+      } catch (_) {}
+    }
+    return <Map<String, dynamic>>[];
+  }
+
+  static List<String> _toImages(dynamic v) {
+    if (v == null) return [];
+    if (v is List) return v.map((e) => e.toString()).toList();
+
+    if (v is String && v.trim().isNotEmpty) {
+      try {
+        final decoded = jsonDecode(v);
+        if (decoded is List) return decoded.map((e) => e.toString()).toList();
+      } catch (_) {
+        return [v];
       }
     }
-    return 0;
+    return [];
   }
 
-  factory Customer.fromJson(Map<String, dynamic> json) {
+  // ---------- Factory ----------
+  factory Customer.fromJson(Map<String, dynamic> j) {
     return Customer(
-      // department jarang dikirim; kalau backend belum kirim, akan null -> tampil "-"
-      department: _s(json, ['department', 'department_name']),
-      employee: _s(json, ['employee', 'employee_name']),
-      name: _s(json, ['name']),
-      categoryName: _s(json, [
-        'category_name',
-        'customer_category_name',
-        'customer_categories_name'
-      ]),
-      phone: _s(json, ['phone', 'telp']),
-      email: _s(json, ['email']),
-      alamat: _s(json, ['alamat', 'full_address', 'address']),
-      maps: _s(json, ['maps', 'gmaps_link']),
-      programName:
-          _s(json, ['customer_program_name', 'program_name', 'program']),
-      programPoint: _i(json, ['program_point', 'jumlah_program']),
-      rewardPoint: _i(json, ['reward_point']),
-      image: _s(json, ['image', 'image_url']),
-      status: _s(json, ['status', 'status_pengajuan']),
-      createdAt: _s(json, ['created_at', 'createdAt']),
-      updatedAt: _s(json, ['updated_at', 'updatedAt']),
+      id: _toInt(j['id']),
+      companyId: _toIntOrNull(j['company_id']),
+      departmentId: _toIntOrNull(j['department_id']),
+      employeeId: _toIntOrNull(j['employee_id']),
+      categoryId: _toIntOrNull(j['customer_categories_id'] ?? j['category_id']),
+      programId: _toIntOrNull(j['customer_program_id'] ?? j['program_id']),
+      departmentName: _optString(j['department_name'] ?? j['department']),
+      employeeName: _optString(j['employee_name'] ?? j['employee']),
+      categoryName: _optString(j['category_name']),
+      programName: _optString(j['program_name'] ?? j['customer_program_name']),
+      name: _toString(j['name'], def: '-'),
+      phone: _toString(j['phone']),
+      email: _optString(j['email']),
+      addressDetail: _toAddressList(j['alamat_detail'] ?? j['address']),
+      alamat: _optString(j['alamat'] ?? j['full_address']),
+      gmapsLink: _optString(j['gmaps_link'] ?? j['maps']),
+      programPoint: _toInt(j['program_point'] ?? j['jumlah_program']),
+      rewardPoint: _toInt(j['reward_point']),
+      status: _toString(j['status']),
+      statusPengajuan: _optString(j['status_pengajuan']),
+      images: _toImages(j['images'] ?? j['image']),
+      createdAt: _parseDate(j['created_at']),
+      updatedAt: _parseDate(j['updated_at']),
     );
   }
 
-  Map<String, dynamic> toJson() => {
-        'department': department,
-        'employee': employee,
-        'name': name,
-        'category_name': categoryName,
-        'phone': phone,
-        'email': email,
-        'alamat': alamat,
-        'maps': maps,
-        'customer_program_name': programName,
-        'program_point': programPoint,
-        'reward_point': rewardPoint,
-        'image': image,
-        'status': status,
-        'created_at': createdAt,
-        'updated_at': updatedAt,
-      };
+  // ---------- Getter Display ----------
+  String get alamatDisplay {
+    if (addressDetail.isNotEmpty) {
+      final a = addressDetail.first;
+      final detail = a['detail_alamat'] ?? '';
+      final prov = a['provinsi']?['name'] ?? '';
+      final kab = a['kota_kab']?['name'] ?? '';
+      final kec = a['kecamatan']?['name'] ?? '';
+      final kel = a['kelurahan']?['name'] ?? '';
+      final kode = a['kode_pos']?.toString() ?? '';
+
+      return [detail, kel, kec, kab, prov, kode]
+          .where((x) => x != null && x.toString().trim().isNotEmpty && x.toString() != '-')
+          .join(', ');
+    }
+
+    if ((alamat ?? '').trim().isNotEmpty) return alamat!;
+    return '-';
+  }
 }

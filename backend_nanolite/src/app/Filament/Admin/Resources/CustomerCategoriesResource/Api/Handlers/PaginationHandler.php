@@ -16,15 +16,13 @@ class PaginationHandler extends Handlers
     public static ?string $resource = CustomerCategoriesResource::class;
 
     public function handler()
-    {
-        $paginator = QueryBuilder::for(static::getModel())
-            ->allowedFilters(['name','deskripsi'])
-            ->with(['company','customers','customerPrograms','employees','orders','productReturns','garansis'])
-            ->withCount(['customers','customerPrograms','employees','orders','productReturns','garansis'])
-            ->paginate($this->perPage(request()))
-            ->appends(request()->query())
-            ->through(fn ($cat) => new CustomerCategoriesTransformer($cat));
+{
+    $paginator = QueryBuilder::for(static::getModel())
+        ->allowedFilters(['name','deskripsi'])
+        ->select(['id','name','status']) // ambil kolom minimal
+        ->paginate($this->perPage(request()))
+        ->appends(request()->query());
 
-        return static::sendSuccessResponse($paginator, 'Customer categories list retrieved successfully');
-    }
+    return static::sendSuccessResponse($paginator, 'Customer categories list retrieved successfully');
+}
 }

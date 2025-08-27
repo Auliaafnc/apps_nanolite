@@ -1,7 +1,6 @@
 // lib/pages/sl711.dart
 import 'package:flutter/material.dart';
 
-import 'categories_nano.dart';
 import 'create_sales_order.dart';
 import 'home.dart';
 import 'profile.dart';
@@ -11,190 +10,242 @@ class StreetLight711Page extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // ---- PALETTE ----
-    const Color bgTop = Color(0xFF0B2741);
-    const Color bgBottom = Color(0xFF0E3556);
-    const Color card = Color(0xFF0F2D4B);
-    const Color chip = Color(0xFF163E66);
-    const Color pillLight = Color(0xFFE7EEF7);
-    const Color pillText = Color(0xFF0F2D4B);
-    const Color textPrimary = Colors.white;
+    // === Palet & panel (gaya Emergency/Bulb) ===
+    const Color bgPage = Color(0xFF0A1B2D);
+    const Color headerLight = Color(0xFFE9ECEF);
+    const Color cardDark = Color(0xFF0F2741);
+    const Color blue6500 = Color(0xFF1EA7FF);
 
-    // Tabel
-    const Color headerDark = Color(0xFF0B2741);
-    const Color accentBlue = Color(0xFF1EA7FF); // biru muda untuk 6500K
-
-    // ---- RESPONSIVE ----
-    final size = MediaQuery.of(context).size;
-    final bool isTablet = size.width >= 600;
+    final bool isTablet = MediaQuery.of(context).size.width >= 600;
     final double hPad = isTablet ? 24 : 16;
     final double vPad = isTablet ? 18 : 12;
-    final double heroH = isTablet ? 380 : 240;
-    final double? compH = isTablet ? 300 : null;
 
-    // ---- HELPERS ----
+    // Brand chip (abu-abu, icon/teks hitam)
     Widget brandChip() => Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(color: chip, borderRadius: BorderRadius.circular(32)),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: Colors.grey[300],
+            borderRadius: BorderRadius.circular(24),
+          ),
           child: const Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.lightbulb_outline, color: Colors.white),
+              Icon(Icons.lightbulb, color: Colors.black),
               SizedBox(width: 8),
-              Text('Nanolite', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+              Text('Nanolite', style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600)),
             ],
           ),
         );
 
-    Widget specPill() => Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(color: pillLight, borderRadius: BorderRadius.circular(20)),
-          child: const Text(
-            'SPESIFIKASI',
-            style: TextStyle(color: pillText, fontWeight: FontWeight.w800, letterSpacing: .3),
-          ),
-        );
-
-    Widget bullet(String text, {bool bold = false}) => Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Padding(padding: EdgeInsets.only(top: 6), child: Icon(Icons.circle, size: 6, color: Colors.white)),
-            const SizedBox(width: 10),
-            Expanded(
-              child: Text(
-                text,
-                style: TextStyle(color: textPrimary, fontWeight: bold ? FontWeight.w800 : FontWeight.w600),
-                softWrap: true,
+    // HERO image: panel gelap + radius
+    Widget productImage() => ClipRRect(
+          borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
+          child: Container(
+            color: cardDark,
+            padding: const EdgeInsets.all(16),
+            child: Center(
+              child: Image.asset(
+                'assets/images/streetlightnano.jpg',
+                width: isTablet ? 340 : 260,
+                fit: BoxFit.contain,
               ),
             ),
-          ],
-        );
-
-    Widget productImage(String path, {double? height}) => Container(
-          height: height,
-          decoration: BoxDecoration(color: card, borderRadius: BorderRadius.circular(18)),
-          padding: const EdgeInsets.all(16),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(12),
-            child: Image.asset(
-              path,
-              fit: BoxFit.contain,
-              errorBuilder: (_, __, ___) =>
-                  const Center(child: Icon(Icons.broken_image, color: Colors.white70, size: 48)),
-            ),
           ),
         );
 
-    // Spesifikasi HANYA untuk hero (atas)
-    Widget specCard(List<String> points, {double? height}) => Container(
-          height: height,
-          decoration: BoxDecoration(color: card, borderRadius: BorderRadius.circular(18)),
-          padding: const EdgeInsets.all(16),
+    // Kartu spesifikasi putih (header abu-abu)
+    Widget specCard() {
+      Widget header = Container(
+        width: double.infinity,
+        height: 42,
+        decoration: const BoxDecoration(
+          color: headerLight,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+        ),
+        child: const Center(
+          child: Text('SPESIFIKASI', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.black)),
+        ),
+      );
+
+      Widget row(String l, String r) => Padding(
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: RichText(
+              text: TextSpan(
+                style: const TextStyle(color: Colors.black87, fontSize: 14, height: 1.4),
+                children: [
+                  TextSpan(text: '$l: ', style: const TextStyle(fontWeight: FontWeight.w800)),
+                  TextSpan(text: r, style: const TextStyle(fontWeight: FontWeight.w600)),
+                ],
+              ),
+            ),
+          );
+
+      return Container(
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 14),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Center(child: specPill()),
-              SizedBox(height: isTablet ? 16 : 12),
-              for (int i = 0; i < points.length; i++) ...[
-                bullet(points[i], bold: i == 0),
-                const SizedBox(height: 8),
-              ],
-              if (height != null) const Spacer(),
+              header,
+              const SizedBox(height: 6),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    row('Tahan Sampai', '50.000 Jam'),
+                    row('Power Faktor', '>0.5'),
+                    row('Tegangan', '100–300V (50/60Hz)'),
+                    row('Jenis', 'Lampu Jalan'),
+                    row('CRI', '>85'),
+                    row('IP', '65'),
+                    row('Ukuran Lubang Tiang', '60mm'),
+                  ],
+                ),
+              ),
             ],
           ),
-        );
-
-    // ===== TABEL VARIAN =====
-    Widget th(String text) => Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-      color: Colors.white, // ubah background header jadi putih
-      child: Text(
-        text,
-        textAlign: TextAlign.center,
-        style: const TextStyle(
-          color: Colors.black, // teks hitam
-          fontWeight: FontWeight.w800,
-          fontSize: 12,
         ),
-      ),
-    );
-
-    Widget td(String text, {bool highlight = false}) => Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-          alignment: Alignment.center,
-          decoration: highlight ? BoxDecoration(color: accentBlue) : const BoxDecoration(),
-          child: Text(
-            text,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: highlight ? FontWeight.w800 : FontWeight.w600,
-              fontSize: 12,
-            ),
-          ),
-        );
-
-    Widget specTable() {
-      final rows = [
-        ['150 Watt', '19500lm/watt', '542mm x 214mm x 76mm', '10', '6500K', 'Cahaya Putih Kebiruan'],
-      ];
-
-      final table = Table(
-      defaultVerticalAlignment: TableCellVerticalAlignment.middle,
-      border: TableBorder.all(color: Colors.white, width: 1), // border antar sel putih
-      columnWidths: const {
-        0: FixedColumnWidth(110),
-        1: FixedColumnWidth(130),
-        2: FixedColumnWidth(200),
-        3: FixedColumnWidth(80),
-        4: FixedColumnWidth(100),
-        5: FixedColumnWidth(180),
-      },
-      children: [
-        TableRow(children: [
-          th('Varian Watt'),
-          th('Lumen'),
-          th('Ukuran'),
-          th('Isi/Dus'),
-          th('Warna'),
-          th('Keterangan'),
-        ]),
-        for (final r in rows)
-          TableRow(children: [
-            td(r[0]),
-            td(r[1]),
-            td(r[2]),
-            td(r[3]),
-            td(r[4], highlight: true),
-            td(r[5]),
-          ]),
-      ],
-    );
-
-
-      return Container(
-        decoration: BoxDecoration(color: card, borderRadius: BorderRadius.circular(18)),
-        padding: const EdgeInsets.all(10),
-        child: SingleChildScrollView(scrollDirection: Axis.horizontal, child: table),
       );
     }
 
-    // Perbandingan: hanya judul + gambar (tanpa spesifikasi)
-    Widget comparisonImageBlock({required String title, required String imagePath}) => Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title,
-              style: TextStyle(color: textPrimary, fontWeight: FontWeight.w800, fontSize: isTablet ? 18 : 16),
+    // ====== util sel tabel ======
+    Widget th(String t) => ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 44),
+          child: Container(
+            color: headerLight,
+            alignment: Alignment.center,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Text(
+              t,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w700, height: 1.1),
             ),
-            SizedBox(height: vPad),
-            productImage(imagePath, height: compH),
-          ],
+          ),
         );
 
-    // ---- PAGE ----
+    Widget td(String t) => ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 42),
+          child: Container(
+            alignment: Alignment.center,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Text(
+              t,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, height: 1.1),
+            ),
+          ),
+        );
+
+    Widget tdBlue(String t) => ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 42),
+          child: Container(
+            alignment: Alignment.center,
+            color: blue6500,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Text(
+              t,
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, height: 1.1),
+            ),
+          ),
+        );
+
+    // ====== Tabel varian (dengan Harga) ======
+    Widget specTable() {
+      // Kolom: Watt | Lumen | Ukuran | Harga | Warna | Keterangan | Isi/Dus
+      const rows = [
+        ['150 Watt', '19.500 lm', '542 × 214 × 76 mm', 'Rp 774,900', '6500K', 'Cahaya Putih Kebiruan', '10'],
+      ];
+
+      // Lebar kolom: fixed (HP) / flex (Tablet)
+      const phoneWidths = <int, TableColumnWidth>{
+        0: FixedColumnWidth(110), // Watt
+        1: FixedColumnWidth(120), // Lumen
+        2: FixedColumnWidth(210), // Ukuran
+        3: FixedColumnWidth(130), // Harga
+        4: FixedColumnWidth(90),  // Warna
+        5: FixedColumnWidth(180), // Keterangan
+        6: FixedColumnWidth(90),  // Isi/Dus
+      };
+      final tabletWidths = <int, TableColumnWidth>{
+        0: const FlexColumnWidth(1.0),
+        1: const FlexColumnWidth(1.0),
+        2: const FlexColumnWidth(1.6),
+        3: const FlexColumnWidth(1.2),
+        4: const FlexColumnWidth(0.9),
+        5: const FlexColumnWidth(1.4),
+        6: const FlexColumnWidth(0.9),
+      };
+
+      final table = Table(
+        columnWidths: isTablet ? tabletWidths : phoneWidths,
+        defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+        border: const TableBorder.symmetric(
+          inside: BorderSide(color: Colors.white24, width: 1),
+          outside: BorderSide(color: Colors.white24, width: 1),
+        ),
+        children: [
+          TableRow(children: [
+            th('Varian Watt'),
+            th('Lumen'),
+            th('Ukuran'),
+            th('Harga'),
+            th('Warna'),
+            th('Keterangan'),
+            th('Isi/Dus'),
+          ]),
+          for (final r in rows)
+            TableRow(
+              decoration: const BoxDecoration(color: bgPage),
+              children: [
+                td(r[0]),
+                td(r[1]),
+                td(r[2]),
+                td(r[3]),
+                tdBlue(r[4]),  // 6500K
+                td(r[5]),
+                td(r[6]),
+              ],
+            ),
+        ],
+      );
+
+      // Panel tabel rounded + scroll horizontal di HP
+      return ClipRRect(
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          color: cardDark,
+          padding: const EdgeInsets.all(10),
+          child: isTablet
+              ? table
+              : SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: ConstrainedBox(
+                    // total ≈ 110+120+210+130+90+180+90 = 930
+                    constraints: const BoxConstraints(minWidth: 930),
+                    child: table,
+                  ),
+                ),
+        ),
+      );
+    }
+
+    // ====== Gambar perbandingan (panel rounded) ======
+    Widget roundedImage(String path, double h) => ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            color: cardDark,
+            padding: const EdgeInsets.all(12),
+            child: Image.asset(path, height: h, fit: BoxFit.contain),
+          ),
+        );
+
+    // ===== PAGE =====
     return Scaffold(
-      backgroundColor: bgBottom,
+      backgroundColor: bgPage,
       appBar: AppBar(
         backgroundColor: Colors.grey[200],
         elevation: 0,
@@ -204,110 +255,80 @@ class StreetLight711Page extends StatelessWidget {
             if (Navigator.of(context).canPop()) {
               Navigator.of(context).pop();
             } else {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (_) => const CategoriesNanoScreen()),
-              );
+              Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => HomeScreen()));
             }
           },
         ),
         title: const Text('nanopiko', style: TextStyle(color: Colors.black)),
-        centerTitle: false,
       ),
+      body: ListView(
+        padding: EdgeInsets.fromLTRB(hPad, vPad, hPad, vPad + 16),
+        children: [
+          brandChip(),
+          SizedBox(height: vPad),
+          Text(
+            'Product Street Light 711',
+            style: TextStyle(
+              fontSize: isTablet ? 18 : 16,
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          SizedBox(height: vPad),
 
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(begin: Alignment.topCenter, end: Alignment.bottomCenter, colors: [bgTop, bgBottom]),
-        ),
-        child: ListView(
-          padding: EdgeInsets.fromLTRB(hPad, vPad, hPad, vPad + 16),
-          children: [
-            brandChip(),
-            SizedBox(height: vPad),
-
-            Text('Product Street Light 711',
-                style: TextStyle(color: textPrimary, fontWeight: FontWeight.w700, fontSize: isTablet ? 18 : 16)),
-            SizedBox(height: vPad),
-
-            // HERO
-            LayoutBuilder(builder: (context, c) {
+          // HERO (row di tablet, stack di HP)
+          LayoutBuilder(
+            builder: (context, c) {
               final row = isTablet && c.maxWidth >= 680;
-              final img = productImage('assets/images/streetlightnano.jpg', height: row ? heroH : null);
-              final spec = specCard(const [
-                'Tahan Sampai: 50.000 Jam',
-                'Power Faktor: >0.5',
-                'Tegangan: 100–300V (50/60Hz)',
-                'Jenis: Lampu Jalan',
-                'CRI: >85',
-                'IP: 65',
-                'Ukuran Lubang Tiang: 60mm',
-              ], height: row ? heroH : null);
-
+              final img = productImage();
+              final spec = specCard();
               if (row) {
-                return Row(children: [
-                  Expanded(child: img),
-                  const SizedBox(width: 12),
-                  Expanded(child: spec),
-                ]);
+                return Row(children: [Expanded(child: img), const SizedBox(width: 16), Expanded(child: spec)]);
               }
-              return Column(children: [img, SizedBox(height: vPad), spec]);
-            }),
+              return Column(children: [img, const SizedBox(height: 12), spec]);
+            },
+          ),
 
-            SizedBox(height: vPad),
-            specTable(),
+          SizedBox(height: vPad),
 
-            SizedBox(height: vPad * 1.5),
+          // TABLE
+          specTable(),
 
-            // ===== PERBANDINGAN: NANOLITE kiri, PRODUK LAIN kanan =====
-            if (isTablet) ...[
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: comparisonImageBlock(
-                      title: 'NANOLITE',
-                      imagePath: 'assets/images/slnano.jpg',
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: comparisonImageBlock(
-                      title: 'PRODUK LAIN',
-                      imagePath: 'assets/images/slkom.jpg',
-                    ),
-                  ),
-                ],
-              ),
-            ] else ...[
-              comparisonImageBlock(title: 'NANOLITE', imagePath: 'assets/images/slnano.jpg'),
-              SizedBox(height: vPad * 1.5),
-              comparisonImageBlock(title: 'PRODUK LAIN', imagePath: 'assets/images/slkom.jpg'),
-            ],
-          ],
-        ),
+          SizedBox(height: vPad * 1.5),
+
+          // Perbandingan (dua gambar, panel rounded)
+          LayoutBuilder(builder: (context, c) {
+            final twoCols = isTablet && c.maxWidth >= 680;
+            final left = roundedImage('assets/images/slnano.jpg', isTablet ? 220 : 170);
+            final right = roundedImage('assets/images/slkom.jpg', isTablet ? 220 : 170);
+            if (twoCols) {
+              return Row(children: [Expanded(child: left), const SizedBox(width: 16), Expanded(child: right)]);
+            }
+            return Column(children: [left, const SizedBox(height: 12), right]);
+          }),
+        ],
       ),
 
-      // Bottom Navigation
-      bottomNavigationBar: SafeArea(
-        top: false,
+      // Bottom nav (kapsul abu-abu – gaya Emergency/Bulb)
+      bottomNavigationBar: Container(
+        color: bgPage,
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
         child: Container(
-          margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-          padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 24),
+          padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            color: Colors.grey[200],
-            borderRadius: BorderRadius.circular(28),
-            boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, -2))],
+            color: Colors.grey[300],
+            borderRadius: BorderRadius.circular(40),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _navItem(Icons.home, 'Home', onTap: () {
-                Navigator.push(context, MaterialPageRoute(builder: (_) => HomeScreen()));
+              _navItem(context, Icons.home, 'Home', onPressed: () {
+                Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => HomeScreen()));
               }),
-              _navItem(Icons.shopping_cart, 'Create Order', onTap: () {
+              _navItem(context, Icons.shopping_cart, 'Create Order', onPressed: () {
                 Navigator.push(context, MaterialPageRoute(builder: (_) => CreateSalesOrderScreen()));
               }),
-              _navItem(Icons.person, 'Profile', onTap: () {
+              _navItem(context, Icons.person, 'Profile', onPressed: () {
                 Navigator.push(context, MaterialPageRoute(builder: (_) => ProfileScreen()));
               }),
             ],
@@ -316,20 +337,23 @@ class StreetLight711Page extends StatelessWidget {
       ),
     );
   }
-}
 
-// Bottom nav item (reusable)
-Widget _navItem(IconData icon, String label, {required VoidCallback onTap}) {
-  return InkWell(
-    onTap: onTap,
-    borderRadius: BorderRadius.circular(12),
-    child: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, color: Colors.black87),
-        const SizedBox(height: 4),
-        Text(label, style: const TextStyle(color: Colors.black87, fontSize: 12)),
-      ],
-    ),
-  );
+  // Bottom-nav item
+  Widget _navItem(BuildContext context, IconData icon, String label, {VoidCallback? onPressed}) {
+    final bool isTablet = MediaQuery.of(context).size.shortestSide >= 600;
+    final double iconSize = isTablet ? 32 : 28;
+    final double fontSize = isTablet ? 14 : 12;
+
+    return InkWell(
+      onTap: onPressed,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: iconSize, color: const Color(0xFF0A1B2D)),
+          const SizedBox(height: 4),
+          Text(label, style: TextStyle(color: const Color(0xFF0A1B2D), fontSize: fontSize)),
+        ],
+      ),
+    );
+  }
 }

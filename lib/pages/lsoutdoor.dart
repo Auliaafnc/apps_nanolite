@@ -1,3 +1,4 @@
+// lib/pages/lsoutdoor.dart
 import 'package:flutter/material.dart';
 
 import 'create_sales_order.dart';
@@ -9,36 +10,33 @@ class LSOutdoorPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // === Palet & panel (persis Bulb) ===
+    // === Palette: samakan dengan Bulb/Indoor ===
     const Color bgPage = Color(0xFF0A1B2D);
     const Color headerLight = Color(0xFFE9ECEF);
-    const Color blue6500 = Color(0xFF1EA7FF);
-    const Color yellow3000 = Color(0xFFFFC107);
+    const Color blue6500 = Color(0xFF1EA7FF);   // 6500K
+    const Color yellow3000 = Color(0xFFFFC107); // 3000K
+    const Color grey4000 = Color(0xFFBDBDBD);   // 4000K (kalau perlu)
     const Color cardDark = Color(0xFF0F2741);
 
     final bool isTablet = MediaQuery.of(context).size.width >= 600;
     final double hPad = isTablet ? 24 : 16;
     final double vPad = isTablet ? 18 : 12;
 
-    // Brand chip (abu-abu, icon/teks hitam)
+    // Brand chip
     Widget brandChip() => Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-          decoration: BoxDecoration(
-            color: Colors.grey[300],
-            borderRadius: BorderRadius.circular(24),
-          ),
+          decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(24)),
           child: const Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(Icons.lightbulb, color: Colors.black),
               SizedBox(width: 8),
-              Text('Nanolite',
-                  style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600)),
+              Text('Nanolite', style: TextStyle(color: Colors.black, fontWeight: FontWeight.w600)),
             ],
           ),
         );
 
-    // HERO image: panel gelap + radius
+    // HERO image
     Widget productImage() => ClipRRect(
           borderRadius: BorderRadius.circular(isTablet ? 20 : 16),
           child: Container(
@@ -46,15 +44,15 @@ class LSOutdoorPage extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             child: Center(
               child: Image.asset(
-                'assets/images/outdoornano.jpg', // ganti jika perlu
-                width: isTablet ? 320 : 260,
+                'assets/images/outdoornano.jpg',
+                height: isTablet ? 260 : 220,
                 fit: BoxFit.contain,
               ),
             ),
           ),
         );
 
-    // Kartu spesifikasi putih (header abu-abu)
+    // Kartu spesifikasi
     Widget specCard() {
       Widget header = Container(
         width: double.infinity,
@@ -64,8 +62,7 @@ class LSOutdoorPage extends StatelessWidget {
           borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
         ),
         child: const Center(
-          child: Text('SPESIFIKASI',
-              style: TextStyle(fontWeight: FontWeight.w700, color: Colors.black)),
+          child: Text('SPESIFIKASI', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.black)),
         ),
       );
 
@@ -101,7 +98,6 @@ class LSOutdoorPage extends StatelessWidget {
                     row('Hemat Energi', '90%'),
                     row('CRI', '>80'),
                     row('IP', '33'),
-                    row('Tegangan', 'DC 12V'),
                   ],
                 ),
               ),
@@ -111,7 +107,7 @@ class LSOutdoorPage extends StatelessWidget {
       );
     }
 
-    // ====== builder sel tabel (persis gaya Bulb) ======
+    // ===== Builder sel tabel =====
     Widget th(String t) => ConstrainedBox(
           constraints: const BoxConstraints(minHeight: 44),
           child: Container(
@@ -141,51 +137,58 @@ class LSOutdoorPage extends StatelessWidget {
           ),
         );
 
-    Widget tdBlue(String t) => ConstrainedBox(
-          constraints: const BoxConstraints(minHeight: 42),
-          child: Container(
-            alignment: Alignment.center,
-            color: blue6500,
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: Text(
-              t,
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, height: 1.1),
-            ),
-          ),
-        );
-
     Widget tdYellow(String t) => ConstrainedBox(
           constraints: const BoxConstraints(minHeight: 42),
           child: Container(
             alignment: Alignment.center,
             color: yellow3000,
             padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: Text(
-              t,
-              style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w800, height: 1.1),
-            ),
+            child: Text(t, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w800, height: 1.1)),
           ),
         );
 
-    // ====== Tabel varian (disederhanakan utk Light Strip; tetap gaya Bulb) ======
+    Widget tdBlue(String t) => ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 42),
+          child: Container(
+            alignment: Alignment.center,
+            color: blue6500,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Text(t, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w800, height: 1.1)),
+          ),
+        );
+
+    Widget tdGrey(String t) => ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 42),
+          child: Container(
+            alignment: Alignment.center,
+            color: grey4000,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Text(t, style: const TextStyle(color: Colors.black, fontWeight: FontWeight.w800, height: 1.1)),
+          ),
+        );
+
+    Widget badge(String temp) {
+      if (temp == '3000K') return tdYellow(temp);
+      if (temp == '4000K') return tdGrey(temp);
+      return tdBlue(temp); // default 6500K
+    }
+
+    // ===== TABEL VARIAN (7 kolom) =====
     Widget specTable() {
-      // Kolom: Watt/m | Lumen | Ukuran | Harga | Warna | Ket | Warna | Ket | Isi/Dus
+      // Kolom: Watt/m | Lumen | Ukuran | Harga | Warna | Keterangan | Isi/Dus
       const rows = [
-        ['9 w/m', '120 lm/watt', '5000 × 8 × 3 mm', 'Rp 237.900', '3000K', 'Cahaya Putih Kekuningan', '6500K', 'Cahaya Putih Kebiruan', '40'],
-        ['9 w/m', '120 lm/watt', '5000 × 8 × 3 mm', 'Rp 237.900', '3000K', 'Cahaya Putih Kekuningan', '6500K', 'Cahaya Putih Kebiruan', '40'],
+        ['9 w/m', '120 lm/watt', '5000mm × 8mm × 3mm', 'Rp 237.900', '3000K', 'Cahaya Putih Kekuningan', '40'],
+        ['9 w/m', '120 lm/watt', '5000mm × 8mm × 3mm', 'Rp 237.900', '6500K', 'Cahaya Putih Kebiruan', '40'],
       ];
 
-      // Lebar kolom: fixed (HP) / flex (Tablet)
       const phoneWidths = <int, TableColumnWidth>{
-        0: FixedColumnWidth(110), // Watt/m
-        1: FixedColumnWidth(120), // Lumen
-        2: FixedColumnWidth(200), // Ukuran
-        3: FixedColumnWidth(130), // Harga
-        4: FixedColumnWidth(90),  // 3000K
-        5: FixedColumnWidth(180), // Ket 3000K
-        6: FixedColumnWidth(90),  // 6500K
-        7: FixedColumnWidth(180), // Ket 6500K
-        8: FixedColumnWidth(90),  // Isi/Dus
+        0: FixedColumnWidth(110),
+        1: FixedColumnWidth(120),
+        2: FixedColumnWidth(210),
+        3: FixedColumnWidth(130),
+        4: FixedColumnWidth(90),
+        5: FixedColumnWidth(180),
+        6: FixedColumnWidth(90),
       };
       final tabletWidths = <int, TableColumnWidth>{
         0: const FlexColumnWidth(1.0),
@@ -195,8 +198,6 @@ class LSOutdoorPage extends StatelessWidget {
         4: const FlexColumnWidth(0.9),
         5: const FlexColumnWidth(1.4),
         6: const FlexColumnWidth(0.9),
-        7: const FlexColumnWidth(1.4),
-        8: const FlexColumnWidth(0.9),
       };
 
       final table = Table(
@@ -208,12 +209,10 @@ class LSOutdoorPage extends StatelessWidget {
         ),
         children: [
           TableRow(children: [
-            th('Watt / m'),
+            th('Varian Watt'),
             th('Lumen'),
             th('Ukuran'),
             th('Harga'),
-            th('Warna'),
-            th('Keterangan'),
             th('Warna'),
             th('Keterangan'),
             th('Isi/Dus'),
@@ -226,17 +225,14 @@ class LSOutdoorPage extends StatelessWidget {
                 td(r[1]),
                 td(r[2]),
                 td(r[3]),
-                tdYellow(r[4]), // 3000K
+                badge(r[4]),
                 td(r[5]),
-                tdBlue(r[6]),   // 6500K
-                td(r[7]),
-                td(r[8]),
+                td(r[6]),
               ],
             ),
         ],
       );
 
-      // Panel tabel rounded + scroll horizontal di HP
       return ClipRRect(
         borderRadius: BorderRadius.circular(12),
         child: Container(
@@ -247,7 +243,7 @@ class LSOutdoorPage extends StatelessWidget {
               : SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: ConstrainedBox(
-                    constraints: const BoxConstraints(minWidth: 1140),
+                    constraints: const BoxConstraints(minWidth: 940),
                     child: table,
                   ),
                 ),
@@ -255,7 +251,7 @@ class LSOutdoorPage extends StatelessWidget {
       );
     }
 
-    // Gambar perbandingan (panel rounded) — sama gaya Bulb
+    // Gambar perbandingan (panel rounded)
     Widget roundedImage(String path, double h) => ClipRRect(
           borderRadius: BorderRadius.circular(16),
           child: Container(
@@ -265,6 +261,7 @@ class LSOutdoorPage extends StatelessWidget {
           ),
         );
 
+    // ===== PAGE =====
     return Scaffold(
       backgroundColor: bgPage,
       appBar: AppBar(
@@ -272,7 +269,16 @@ class LSOutdoorPage extends StatelessWidget {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
-          onPressed: () => Navigator.pop(context),
+          onPressed: () {
+            if (Navigator.of(context).canPop()) {
+              Navigator.of(context).pop();
+            } else {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => HomeScreen()),
+              );
+            }
+          },
         ),
         title: const Text('nanopiko', style: TextStyle(color: Colors.black)),
       ),
@@ -281,28 +287,20 @@ class LSOutdoorPage extends StatelessWidget {
         children: [
           brandChip(),
           SizedBox(height: vPad),
-          const Text(
+          Text(
             'Product Light Strip Outdoor',
-            style: TextStyle(
-              color: Colors.white,
-              fontWeight: FontWeight.w700,
-              fontSize: 18,
-            ),
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: isTablet ? 18 : 16),
           ),
           SizedBox(height: vPad),
 
-          // HERO (row di tablet, stack di HP)
-          LayoutBuilder(
-            builder: (context, c) {
-              final row = isTablet && c.maxWidth >= 680;
-              final img = productImage();
-              final spec = specCard();
-              if (row) {
-                return Row(children: [Expanded(child: img), const SizedBox(width: 16), Expanded(child: spec)]);
-              }
-              return Column(children: [img, const SizedBox(height: 12), spec]);
-            },
-          ),
+          // HERO
+          LayoutBuilder(builder: (context, c) {
+            final row = isTablet && c.maxWidth >= 680;
+            final img = productImage();
+            final spec = specCard();
+            if (row) return Row(children: [Expanded(child: img), const SizedBox(width: 16), Expanded(child: spec)]);
+            return Column(children: [img, const SizedBox(height: 12), spec]);
+          }),
 
           SizedBox(height: vPad),
 
@@ -311,29 +309,24 @@ class LSOutdoorPage extends StatelessWidget {
 
           SizedBox(height: vPad * 1.5),
 
-          // Perbandingan (dua gambar)
+          // Perbandingan
           LayoutBuilder(builder: (context, c) {
             final twoCols = isTablet && c.maxWidth >= 680;
             final left = roundedImage('assets/images/outnano.jpg', isTablet ? 220 : 170);
             final right = roundedImage('assets/images/outkom.jpg', isTablet ? 220 : 170);
-            if (twoCols) {
-              return Row(children: [Expanded(child: left), const SizedBox(width: 16), Expanded(child: right)]);
-            }
+            if (twoCols) return Row(children: [Expanded(child: left), const SizedBox(width: 16), Expanded(child: right)]);
             return Column(children: [left, const SizedBox(height: 12), right]);
           }),
         ],
       ),
 
-      // Bottom nav (pill abu-abu — persis Bulb)
+      // Bottom nav (pill abu-abu)
       bottomNavigationBar: Container(
         color: bgPage,
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            color: Colors.grey[300],
-            borderRadius: BorderRadius.circular(40),
-          ),
+          decoration: BoxDecoration(color: Colors.grey[300], borderRadius: BorderRadius.circular(40)),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
@@ -353,7 +346,7 @@ class LSOutdoorPage extends StatelessWidget {
     );
   }
 
-  // Bottom-nav item (persis Bulb)
+  // Bottom nav item
   Widget _navItem(BuildContext context, IconData icon, String label, {VoidCallback? onPressed}) {
     final bool isTablet = MediaQuery.of(context).size.shortestSide >= 600;
     final double iconSize = isTablet ? 32 : 28;

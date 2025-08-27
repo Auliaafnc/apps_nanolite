@@ -15,11 +15,12 @@ class ProductReturnTransformer extends JsonResource
 {
     public function toArray($request): array
     {
+        // ⬇⬇⬇ relasi disamakan -> 'category'
         $this->resource->loadMissing([
             'department:id,name',
             'employee:id,name',
             'customer:id,name',
-            'customerCategory:id,name',
+            'category:id,name',
         ]);
 
         $statusLabel = match ($this->status) {
@@ -37,7 +38,8 @@ class ProductReturnTransformer extends JsonResource
             'department'         => $this->department?->name ?? '-',
             'employee'           => $this->employee?->name ?? '-',
             'customer'           => $this->customer?->name ?? '-',
-            'customer_category'  => $this->customerCategory?->name ?? '-',
+            // ⬇⬇⬇ gunakan relasi 'category'
+            'customer_category'  => $this->category?->name ?? '-',
             'phone'              => $this->phone,
             'address_text'       => $this->addressText($alamatReadable),
             'address_detail'     => $alamatReadable,
@@ -47,14 +49,16 @@ class ProductReturnTransformer extends JsonResource
             'image'              => $this->image ? Storage::url($this->image) : null,
             'products'           => $productsReadable,
             'status'             => $statusLabel,
+
+            // file unduhan
             'file_pdf_url'       => $this->return_file  ? Storage::url($this->return_file)  : null,
-            'file_excel_url'     => $this->return_excel ? Storage::url($this->return_excel) : null,
+           
             'created_at'         => optional($this->created_at)->format('d/m/Y'),
             'updated_at'         => optional($this->updated_at)->format('d/m/Y'),
         ];
     }
 
-    /* ---------- Helpers ---------- */
+    /* ---------------- Helpers ---------------- */
 
     private function addressText(array $items): ?string
     {
@@ -116,13 +120,21 @@ class ProductReturnTransformer extends JsonResource
                 ? Product::with(['brand:id,name', 'category:id,name'])->find($p['produk_id'])
                 : null;
 
+        // ✅ Ambil warna dari JSON product->colors
+        $colorName = null;
+        if ($product && !empty($p['warna_id'])) {
+            $colors = collect($product->colors ?? []);
+            $colorObj = $colors->firstWhere('id', $p['warna_id']);
+            $colorName = $colorObj['name'] ?? $p['warna_id'];
+        }
+
             return [
                 'brand'    => $product?->brand?->name ?? null,
                 'category' => $product?->category?->name ?? null,
                 'product'  => $product?->name ?? null,
-                'color'    => $p['warna_id'] ?? null,
+                'color'    => $colorName,
                 'quantity' => (int)($p['quantity'] ?? 0),
             ];
         }, $items);
     }
-} 
+}

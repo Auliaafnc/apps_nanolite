@@ -5,11 +5,11 @@ namespace App\Filament\Admin\Resources\CustomerResource\Api\Handlers;
 use App\Filament\Admin\Resources\CustomerResource;
 use App\Filament\Admin\Resources\CustomerResource\Api\Requests\UpdateCustomerRequest;
 use Rupadana\ApiService\Http\Handlers;
+use Illuminate\Support\Facades\Storage;
 
 class UpdateHandler extends Handlers
 {
-    public static ?string $uri = '/{id}';
-
+    public static ?string $uri = '/{record}';
     public static ?string $resource = CustomerResource::class;
 
     public static function getMethod()
@@ -24,23 +24,39 @@ class UpdateHandler extends Handlers
 
     /**
      * Update Customer
-     *
-     * @return \Illuminate\Http\JsonResponse
      */
-    public function handler(UpdateCustomerRequest $request)
+    public function handler(UpdateCustomerRequest $request, $record)
     {
-        $id = $request->route('id');
+        $model = $record;
 
-        $model = static::getModel()::find($id);
+        // isi semua field kecuali image
+        $data = $request->except('image');
+        $model->fill($data);
 
-        if (! $model) {
-            return static::sendNotFoundResponse();
+        // handle multi-upload image
+        if ($request->hasFile('image')) {
+            // hapus foto lama kalau ada
+            if ($model->image) {
+                $oldFiles = json_decode($model->image, true);
+                if (is_array($oldFiles)) {
+                    foreach ($oldFiles as $old) {
+                        if (Storage::disk('public')->exists($old)) {
+                            Storage::disk('public')->delete($old);
+                        }
+                    }
+                }
+            }
+
+            // upload baru
+            $paths = [];
+            foreach ($request->file('image') as $file) {
+                $paths[] = $file->store('customers', 'public');
+            }
+            $model->image = json_encode($paths);
         }
-
-        $model->fill($request->all());
 
         $model->save();
 
-        return static::sendSuccessResponse($model, 'Successfully Update Resource');
+        return static::sendSuccessResponse($model, 'Successfully Update Customer');
     }
 }
