@@ -15,7 +15,7 @@ class ProductReturnTransformer extends JsonResource
 {
     public function toArray($request): array
     {
-        // ⬇⬇⬇ relasi disamakan -> 'category'
+        // samakan relasi -> 'category'
         $this->resource->loadMissing([
             'department:id,name',
             'employee:id,name',
@@ -27,18 +27,20 @@ class ProductReturnTransformer extends JsonResource
             'approved' => 'Disetujui',
             'rejected' => 'Ditolak',
             'pending'  => 'Pending',
-            default    => ucfirst((string)$this->status),
+            default    => ucfirst((string) $this->status),
         };
 
         $alamatReadable   = $this->mapAddressesReadable($this->address);
         $productsReadable = $this->mapProductsReadable($this->products);
+
+        // ---- bersihkan path image agar tidak ada %22 / kutip / array json ----
+        $imgPath = $this->cleanPath($this->image);
 
         return [
             'no_return'          => $this->no_return,
             'department'         => $this->department?->name ?? '-',
             'employee'           => $this->employee?->name ?? '-',
             'customer'           => $this->customer?->name ?? '-',
-            // ⬇⬇⬇ gunakan relasi 'category'
             'customer_category'  => $this->category?->name ?? '-',
             'phone'              => $this->phone,
             'address_text'       => $this->addressText($alamatReadable),
@@ -46,19 +48,51 @@ class ProductReturnTransformer extends JsonResource
             'amount'             => (int)($this->amount ?? 0),
             'reason'             => $this->reason,
             'note'               => $this->note ?: null,
-            'image'              => $this->image ? Storage::url($this->image) : null,
+
+            // URL gambar publik (null jika kosong)
+            'image'              => $imgPath ? Storage::url($imgPath) : null,
+
             'products'           => $productsReadable,
             'status'             => $statusLabel,
 
             // file unduhan
-            'file_pdf_url'       => $this->return_file  ? Storage::url($this->return_file)  : null,
-           
+            'file_pdf_url'       => $this->return_file ? Storage::url($this->return_file) : null,
+
             'created_at'         => optional($this->created_at)->format('d/m/Y'),
             'updated_at'         => optional($this->updated_at)->format('d/m/Y'),
         ];
     }
 
     /* ---------------- Helpers ---------------- */
+
+    /**
+     * Normalisasi nilai path gambar yang mungkin:
+     * - string dengan kutip:  "product-returns/xxx.jpg"
+     * - string JSON array:    ["product-returns/xxx.jpg"]
+     * - array PHP:            ['product-returns/xxx.jpg', ...]
+     */
+    private function cleanPath($raw): ?string
+    {
+        if (empty($raw)) return null;
+
+        // jika string JSON array
+        if (is_string($raw) && str_starts_with(trim($raw), '[')) {
+            $arr = json_decode($raw, true);
+            $raw = is_array($arr) ? ($arr[0] ?? null) : $raw;
+        }
+
+        // jika array PHP
+        if (is_array($raw)) {
+            $raw = $raw[0] ?? null;
+        }
+
+        if (is_string($raw)) {
+            // buang kutip berlebih
+            $raw = trim($raw, " \t\n\r\0\x0B\"'");
+        }
+
+        return $raw ?: null;
+    }
 
     private function addressText(array $items): ?string
     {
@@ -120,13 +154,27 @@ class ProductReturnTransformer extends JsonResource
                 ? Product::with(['brand:id,name', 'category:id,name'])->find($p['produk_id'])
                 : null;
 
-        // ✅ Ambil warna dari JSON product->colors
-        $colorName = null;
-        if ($product && !empty($p['warna_id'])) {
-            $colors = collect($product->colors ?? []);
-            $colorObj = $colors->firstWhere('id', $p['warna_id']);
-            $colorName = $colorObj['name'] ?? $p['warna_id'];
-        }
+            // Ambil warna dari JSON product->colors (bisa array of string/obj)
+            $colorName = null;
+            if ($product && !empty($p['warna_id'])) {
+                $colors = collect($product->colors ?? []);
+                // case: [{id,name}] atau [{value,label}] atau ["3000K","4000K"]
+                $colorObj = $colors->first(function ($c) use ($p) {
+                    if (is_array($c)) {
+                        return ($c['id'] ?? null) == $p['warna_id']
+                            || ($c['value'] ?? null) == $p['warna_id']
+                            || ($c['name'] ?? $c['label'] ?? null) == $p['warna_id'];
+                    }
+                    return (string) $c === (string) $p['warna_id'];
+                });
+                if (is_array($colorObj)) {
+                    $colorName = $colorObj['name'] ?? $colorObj['label'] ?? $colorObj['value'] ?? $p['warna_id'];
+                } elseif (!is_null($colorObj)) {
+                    $colorName = (string) $colorObj;
+                } else {
+                    $colorName = $p['warna_id']; // fallback
+                }
+            }
 
             return [
                 'brand'    => $product?->brand?->name ?? null,

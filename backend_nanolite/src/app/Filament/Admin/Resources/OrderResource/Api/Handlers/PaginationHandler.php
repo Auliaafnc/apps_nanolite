@@ -34,29 +34,43 @@ class PaginationHandler extends Handlers
                     ->get();
 
             case 'customer-categories':
-                return \App\Models\CustomerCategory::select('id','name')
+                $employeeId = request('employee_id');
+                return \App\Models\CustomerCategory::query()
+                    ->when($employeeId, function ($q) use ($employeeId) {
+                        $q->whereHas('customers', fn($sub) => $sub->where('employee_id', $employeeId));
+                    })
+                    ->select('id','name')
                     ->orderBy('name')
                     ->get();
 
             case 'customers':
-                return Customer::select('id','name','phone','customer_categories_id','customer_program_id')
-                    ->when(request('customer_category_id'), function ($q) {
-                        $q->where('customer_categories_id', request('customer_category_id'));
-                    })
+                $employeeId   = request('employee_id');
+                $categoryId   = request('customer_categories_id');
+                $departmentId = request('department_id');
+
+                return \App\Models\Customer::query()
+                    ->where('status', 'active')
+                    ->when($employeeId, fn($q) => $q->where('employee_id', $employeeId))
+                    ->when($categoryId, fn($q) => $q->where('customer_categories_id', $categoryId))
+                    ->when($departmentId, fn($q) => $q->where('department_id', $departmentId))
+                    ->select('id','name','phone','address','customer_program_id','employee_id','department_id','customer_categories_id')
+                    ->orderBy('name')
+                    ->distinct()
+                    ->get();
+
+
+            case 'customer-programs':
+                $customerId = request('customer_id');
+                if ($customerId) {
+                    $customer = \App\Models\Customer::with('customerProgram')->find($customerId);
+                    return $customer && $customer->customerProgram
+                        ? collect([$customer->customerProgram->only('id','name')])
+                        : collect([]);
+                }
+                return \App\Models\CustomerProgram::select('id','name')
                     ->orderBy('name')
                     ->get();
 
-            case 'customer-programs':
-                if (request('customer_id')) {
-                    $customer = Customer::with('customerProgram')->find(request('customer_id'));
-                    if ($customer && $customer->customerProgram) {
-                        return collect([$customer->customerProgram->only('id','name')]);
-                    }
-                    return collect([]);
-                }
-                return CustomerProgram::select('id','name')
-                    ->orderBy('name')
-                    ->get();
         }
 
         // default pagination
