@@ -491,8 +491,8 @@ static Future<List<OptionItem>> fetchCustomerPrograms({int? employeeId, int? cat
     return list.map<OptionItem>((m) => _parseCustomer(m)).toList();
   }
 
-  // Ambil detail 1 customer by ID
-static Future<OptionItem> fetchCustomerDetail(int id) async {
+// ApiService.dart
+static Future<Customer> fetchCustomerDetail(int id) async {
   final headers = await _authorizedHeaders();
   final uri = _buildUri('customers/$id');
   final res = await http.get(uri, headers: headers);
@@ -514,8 +514,10 @@ static Future<OptionItem> fetchCustomerDetail(int id) async {
 
   if (data == null) throw Exception('Customer detail not found');
 
-  return OptionItem.fromJson(data);
+
+  return Customer.fromJson(data);
 }
+
 
 
 

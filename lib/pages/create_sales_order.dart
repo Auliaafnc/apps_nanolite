@@ -252,7 +252,7 @@ void initState() {
                                   final cust = await ApiService.fetchCustomerDetail(v);
                                   setState(() {
                                     _phoneCtrl.text   = cust.phone ?? '';
-                                    _addressCtrl.text = cust.address ?? '';
+                                  _addressCtrl.text = cust.alamatDisplay;
                                     _programCtrl.text = cust.programName ?? '-';
                                     _programId        = cust.programId;
                                   });
