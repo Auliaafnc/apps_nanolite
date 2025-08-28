@@ -135,7 +135,7 @@ class OrderResource extends Resource
                 Toggle::make('reward_enabled')->label('Reward Aktif')->reactive(),
 
                 TextInput::make('jumlah_program')->label('Poin Program')->numeric()->reactive()
-                    ->disabled(fn($get) => ! $get('program_enabled'))->default(0)->dehydrated(),
+                    ->disabled(fn($get) => ! $get('program_enabled'))->default(0)->nullable()->required()->dehydrated(true),
 
                 Toggle::make('program_enabled')->label('Program Aktif')->reactive(),
 

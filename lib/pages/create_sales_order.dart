@@ -282,6 +282,7 @@ void initState() {
                             label: 'Poin Reward',
                             width: fieldWidth,
                             controller: _rewardCtrl,
+                            hint: '0',
                             enabled: _rewardAktif,
                           ),
                           // Reward & Program toggles
@@ -295,6 +296,7 @@ void initState() {
                             label: 'Poin Program',
                             width: fieldWidth,
                             controller: _poinprogramCtrl,
+                            hint: '0',
                             enabled: _programAktif,
                           ),
                           _switchTile(
@@ -353,18 +355,17 @@ void initState() {
                             enabled: _diskonAktif,
                           ),
 
-                          // Pembayaran & status
                           _darkDropdown<String>(
                             label: 'Metode Pembayaran *',
                             width: fieldWidth,
                             value: _paymentMethod,
                             items: const [
                               DropdownMenuItem(value: 'cash', child: Text('Cash')),
-                              DropdownMenuItem(value: 'transfer', child: Text('Transfer')),
                               DropdownMenuItem(value: 'tempo', child: Text('Tempo')),
                             ],
                             onChanged: (v) => setState(() => _paymentMethod = v ?? 'cash'),
                           ),
+
                           _darkDropdown<String>(
                             label: 'Status Pembayaran *',
                             width: fieldWidth,
@@ -494,37 +495,40 @@ void initState() {
                       onChanged: (v) => setState(() => it.brandId = v),
                     ),
                     _dropdownFuture(
-                      label: 'Kategori *',
-                      future: ApiService.fetchProductCategories(),
-                      value: it.kategoriId,
-                      width: itemWidth,
-                      onChanged: (v) => setState(() => it.kategoriId = v),
-                    ),
-                    _dropdownFuture(
-                      label: 'Produk *',
-                      future: ApiService.fetchProducts(),
-                      value: it.produkId,
-                      width: itemWidth,
-                      onChanged: (v) async {
-                        setState(() {
-                          it.produkId = v;
+                        label: 'Kategori *',
+                        future: it.brandId != null 
+                            ? ApiService.fetchCategoriesByBrand(it.brandId!)
+                            : Future.value([]),
+                        value: it.kategoriId,
+                        width: itemWidth,
+                        onChanged: (v) => setState(() {
+                          it.kategoriId = v;
+                          it.produkId = null;
                           it.warnaId = null;
-                          it.availableColors = const [];
-                          it.hargaPerProduk = null;
-                        });
+                        }),
+                      ),
 
-                        if (v != null) {
-                          final cols = await ApiService.fetchColorsByProduct(v);
-                          final price = await ApiService.fetchProductPrice(v);
-
+                      _dropdownFuture(
+                        label: 'Produk *',
+                        future: (it.brandId != null && it.kategoriId != null)
+                            ? ApiService.fetchProductsByBrandCategory(it.brandId!, it.kategoriId!)
+                            : Future.value([]),
+                        value: it.produkId,
+                        width: itemWidth,
+                        onChanged: (v) async {
                           setState(() {
-                            it.availableColors = cols;
-                            it.hargaPerProduk = price;
+                            it.produkId = v;
+                            it.warnaId = null;
+                            it.availableColors = [];
                           });
-                          _recomputeTotals();
-                        }
-                      },
-                    ),
+                          if (v != null) {
+                            it.availableColors = await ApiService.fetchColorsByProductFiltered(v);
+                            it.hargaPerProduk  = await ApiService.fetchProductPrice(v);
+                            _recomputeTotals();
+                          }
+                        },
+                      ),
+
 
                     // Warna
                     SizedBox(
@@ -673,7 +677,7 @@ void initState() {
                 : null;
 
             return DropdownButtonFormField<int>(
-              isExpanded: true, // 🔥 biar child bisa lebar penuh
+              isExpanded: true,
               value: safeValue,
               items: items
                   .map((opt) => DropdownMenuItem(
@@ -850,6 +854,7 @@ void initState() {
     try {
       final d1 = double.tryParse(_diskon1Ctrl.text.replaceAll(',', '.')) ?? 0.0;
       final d2 = double.tryParse(_diskon2Ctrl.text.replaceAll(',', '.')) ?? 0.0;
+  
 
       final ok = await ApiService.createOrder(
         companyId: 1, // sesuaikan
@@ -862,6 +867,8 @@ void initState() {
         addressText: _addressCtrl.text.trim(),
         programEnabled: _programAktif,
         rewardEnabled: _rewardAktif,
+        rewardPoint: int.tryParse(_rewardCtrl.text) ?? 0,
+        programPoint: int.tryParse(_poinprogramCtrl.text) ?? 0,
         diskon1: d1,
         diskon2: d2,
         penjelasanDiskon1: _penjelasanDiskon1Ctrl.text.trim().isEmpty ? null : _penjelasanDiskon1Ctrl.text.trim(),

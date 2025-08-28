@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "ad38c7d37224ebde5e95a0bbee0c6382",
+    "content-hash": "955ee815bfe0023bfca9b317272a17aa",
     "packages": [
         {
             "name": "anourvalar/eloquent-serialize",
@@ -4011,16 +4011,16 @@
         },
         {
             "name": "laravolt/indonesia",
-            "version": "v0.37",
+            "version": "v0.38",
             "source": {
                 "type": "git",
                 "url": "https://github.com/laravolt/indonesia.git",
-                "reference": "e957a7efa7060c881adca8db2217be8265d71783"
+                "reference": "73264dde65245b6089bef89827281198e1f7c1f2"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/laravolt/indonesia/zipball/e957a7efa7060c881adca8db2217be8265d71783",
-                "reference": "e957a7efa7060c881adca8db2217be8265d71783",
+                "url": "https://api.github.com/repos/laravolt/indonesia/zipball/73264dde65245b6089bef89827281198e1f7c1f2",
+                "reference": "73264dde65245b6089bef89827281198e1f7c1f2",
                 "shasum": ""
             },
             "require": {
@@ -4087,9 +4087,9 @@
             ],
             "support": {
                 "issues": "https://github.com/laravolt/indonesia/issues",
-                "source": "https://github.com/laravolt/indonesia/tree/v0.37"
+                "source": "https://github.com/laravolt/indonesia/tree/v0.38"
             },
-            "time": "2025-07-30T05:50:38+00:00"
+            "time": "2025-08-19T13:16:15+00:00"
         },
         {
             "name": "league/commonmark",

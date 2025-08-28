@@ -79,6 +79,7 @@ class OrderTransformer extends JsonResource
                 'points'  => (int)($this->jumlah_program ?? 0),
             ],
 
+
             // Status & pembayaran
             'payment_method'       => $this->payment_method === 'tempo' ? 'Tempo' : 'Cash',
             'status_pembayaran'    => $statusPembayaranLabel,
@@ -89,11 +90,12 @@ class OrderTransformer extends JsonResource
             'total_harga_after_tax'=> (int)($this->total_harga_after_tax ?? 0),
 
             // File unduhan
-            'invoice_pdf_url'      => $this->order_file  ? Storage::url($this->order_file)  : null,
-           
+            'invoice_pdf_url'      => $this->order_file ? Storage::url($this->order_file) : null,
+        
             'created_at'           => optional($this->created_at)->format('d/m/Y'),
             'updated_at'           => optional($this->updated_at)->format('d/m/Y'),
         ];
+
     }
 
     /* ---------------- Helpers ---------------- */

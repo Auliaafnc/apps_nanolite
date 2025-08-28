@@ -445,7 +445,7 @@ static Future<List<OptionItem>> fetchCustomerPrograms({int? employeeId, int? cat
       query: {'customer_category_id': '$categoryId'},
       filterActive: true,
     );
-    // NB: untuk satu customer spesifik, API pagination bisa sediakan type=customer-programs&customer_id=...
+
   }
 
   static Future<List<OptionItem>> fetchCustomersByCategory(
@@ -468,6 +468,9 @@ static Future<List<OptionItem>> fetchCustomerPrograms({int? employeeId, int? cat
 
     return customers.where((c) => c.categoryId == categoryId).toList();
   }
+
+
+
 
   static Future<List<OptionItem>> fetchCustomersFiltered({
     required int departmentId,
@@ -518,6 +521,39 @@ static Future<Customer> fetchCustomerDetail(int id) async {
   return Customer.fromJson(data);
 }
 
+// Ambil kategori produk berdasarkan brand
+static Future<List<OptionItem>> fetchCategoriesByBrand(int brandId) {
+  return ApiService()._fetchOptionsTryPaths(
+    ['orders'], // endpoint orders dipakai utk relasi dinamis
+    query: {
+      'type': 'categories-by-brand',
+      'brand_id': '$brandId',
+    },
+    filterActive: true,
+  );
+}
+
+// Ambil produk berdasarkan brand + kategori
+static Future<List<OptionItem>> fetchProductsByBrandCategory(int brandId, int categoryId) {
+  return ApiService()._fetchOptionsTryPaths(
+    ['orders'],
+    query: {
+      'type': 'products-by-brand-category',
+      'brand_id': '$brandId',
+      'category_id': '$categoryId',
+    },
+    filterActive: true,
+  );
+}
+
+
+static Future<List<OptionItem>> fetchColorsByProductFiltered(int productId) {
+  return ApiService()._fetchOptionsTryPaths(
+    ['orders'],
+    query: {'type':'colors-by-product','product_id':'$productId'},
+    filterActive: false,
+  );
+}
 
 
 
@@ -846,14 +882,20 @@ static Future<String?> fetchPostalCodeByVillage(String villageCode) async {
       total += price * qty;
     }
 
-    final double discPercent =
-        diskonsEnabled ? ((diskon1) + (diskon2)) : 0.0;
-    final double after = total * (1.0 - (discPercent / 100.0));
-    final int totalAfter = after.isNaN || after.isInfinite
+    if (!diskonsEnabled) {
+      return OrderTotals(total: total, totalAfterDiscount: total);
+    }
+
+    // Hitung diskon bertingkat
+    double afterDiskon1 = total * (1.0 - (diskon1 / 100.0));
+    double afterDiskon2 = afterDiskon1 * (1.0 - (diskon2 / 100.0));
+
+    final int totalAfter = afterDiskon2.isNaN || afterDiskon2.isInfinite
         ? total
-        : after.round();
+        : afterDiskon2.round();
 
     return OrderTotals(total: total, totalAfterDiscount: totalAfter);
+
   }
 
   // CREATE ORDER
@@ -868,7 +910,8 @@ static Future<String?> fetchPostalCodeByVillage(String villageCode) async {
     required String addressText,
     bool programEnabled = false,
     bool rewardEnabled = false,
-    String? rewardPoint,
+    int programPoint = 0,   
+    int rewardPoint = 0,    
     double diskon1 = 0,
     double diskon2 = 0,
     String? penjelasanDiskon1,
@@ -909,7 +952,8 @@ static Future<String?> fetchPostalCodeByVillage(String villageCode) async {
     // Diskon & program
     request.fields['program_enabled'] = programEnabled ? '1' : '0';
     request.fields['reward_enabled'] = rewardEnabled ? '1' : '0';
-    if (rewardPoint != null) request.fields['reward_point'] = rewardPoint;
+    request.fields['jumlah_program']  = programPoint.toString();
+  request.fields['reward_point']    = rewardPoint.toString();
     request.fields['diskon_1'] = diskon1.toString();
     request.fields['diskon_2'] = diskon2.toString();
     request.fields['diskons_enabled'] = diskonsEnabled ? '1' : '0';
