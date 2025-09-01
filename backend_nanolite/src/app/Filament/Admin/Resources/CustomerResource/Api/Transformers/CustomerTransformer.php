@@ -29,7 +29,7 @@ class CustomerTransformer extends JsonResource
 
         $alamatReadable = $this->mapAddressesReadable($this->address);
 
-        // 🔥 gabungkan alamat lengkap
+        // gabungkan alamat lengkap
         $alamatFull = null;
         if (!empty($alamatReadable)) {
             $a = $alamatReadable[0];
@@ -41,7 +41,7 @@ class CustomerTransformer extends JsonResource
                 $a['provinsi']['name'] ?? null,
                 $a['kode_pos'] ?? null,
             ])
-            ->filter(fn($v) => $v && trim($v) !== '-') // buang kosong/strip
+            ->filter(fn($v) => $v && strtolower(trim($v)) !== 'null' && trim($v) !== '-')
             ->implode(', ');
         }
 
@@ -87,45 +87,51 @@ class CustomerTransformer extends JsonResource
     }
 
     /* ---------- Helpers: address mapping ---------- */
+   
     private function mapAddressesReadable($address): array
-    {
-        $items = is_array($address) ? $address : json_decode($address ?? '[]', true);
-        if (!is_array($items)) $items = [];
+{
+    $items = is_array($address) ? $address : json_decode($address ?? '[]', true);
+    if (!is_array($items)) $items = [];
 
-        return array_map(function ($a) {
-            // 🔥 ambil dari *_code (sesuai request Flutter)
-            $provCode = $a['provinsi_code']  ?? $a['provinsi']  ?? null;
-            $kabCode  = $a['kota_kab_code']  ?? $a['kota_kab']  ?? null;
-            $kecCode  = $a['kecamatan_code'] ?? $a['kecamatan'] ?? null;
-            $kelCode  = $a['kelurahan_code'] ?? $a['kelurahan'] ?? null;
+    return array_map(function ($a) {
+        $provCode = $a['provinsi_code']  ?? null;
+        $kabCode  = $a['kota_kab_code']  ?? null;
+        $kecCode  = $a['kecamatan_code'] ?? null;
+        $kelCode  = $a['kelurahan_code'] ?? null;
 
-            return [
-                'detail_alamat' => $a['detail_alamat'] ?? null,
-                'provinsi'      => [
-                    'code' => $provCode,
-                    'name' => $this->nameFromCode(Provinsi::class, $provCode),
-                ],
-                'kota_kab'      => [
-                    'code' => $kabCode,
-                    'name' => $this->nameFromCode(Kabupaten::class, $kabCode),
-                ],
-                'kecamatan'     => [
-                    'code' => $kecCode,
-                    'name' => $this->nameFromCode(Kecamatan::class, $kecCode),
-                ],
-                'kelurahan'     => [
-                    'code' => $kelCode,
-                    'name' => $this->nameFromCode(Kelurahan::class, $kelCode),
-                ],
-                'kode_pos'      => $a['kode_pos'] ?? $this->postalByVillage($kelCode),
-            ];
-        }, $items);
-    }
+        return [
+            'detail_alamat' => $a['detail_alamat'] ?? null,
+            'provinsi'      => [
+                'code' => $provCode,
+                'name' => $this->nameFromCode(\Laravolt\Indonesia\Models\Provinsi::class, $provCode)
+                            ?? ($a['provinsi_name'] ?? null), // 🔥 fallback pakai provinsi_name
+            ],
+            'kota_kab'      => [
+                'code' => $kabCode,
+                'name' => $this->nameFromCode(\Laravolt\Indonesia\Models\Kabupaten::class, $kabCode)
+                            ?? ($a['kota_kab_name'] ?? null),
+            ],
+            'kecamatan'     => [
+                'code' => $kecCode,
+                'name' => $this->nameFromCode(\Laravolt\Indonesia\Models\Kecamatan::class, $kecCode)
+                            ?? ($a['kecamatan_name'] ?? null),
+            ],
+            'kelurahan'     => [
+                'code' => $kelCode,
+                'name' => $this->nameFromCode(\Laravolt\Indonesia\Models\Kelurahan::class, $kelCode)
+                            ?? ($a['kelurahan_name'] ?? null),
+            ],
+            'kode_pos'      => $a['kode_pos'] ?? $this->postalByVillage($kelCode),
+        ];
+    }, $items);
+}
+
 
     private function nameFromCode(string $model, ?string $code): ?string
     {
         if (!$code) return null;
-        return optional($model::where('code', $code)->first())->name;
+        $row = $model::where('code', $code)->first();
+        return $row ? $row->name : null; 
     }
 
     private function postalByVillage(?string $villageCode): ?string

@@ -127,7 +127,26 @@ class GaransiResource extends Resource
                     ->required()->preload()->searchable()->placeholder('Pilih Customer'),
 
                 TextInput::make('phone')->label('Phone')->reactive()->required(),
-                Textarea::make('address')->label('Address')->reactive()->rows(2),
+                Textarea::make('address')
+                ->label('Alamat')
+                ->rows(3)
+                ->required()
+                ->formatStateUsing(function ($state, $record) {
+                    if (is_array($state)) {
+                        return collect($state)->map(function ($i) {
+                            return implode(', ', array_filter([
+                                $i['detail_alamat'] ?? null,
+                                $i['kelurahan'] ?? null,
+                                $i['kecamatan'] ?? null,
+                                $i['kota_kab'] ?? null,
+                                $i['provinsi'] ?? null,
+                                $i['kode_pos'] ?? null,
+                            ], fn ($v) => !empty($v) && $v !== '-')); // 🔥 skip kosong & strip
+                        })->implode("\n");
+                    }
+                    return $state;
+                })
+                ->dehydrateStateUsing(fn ($state) => $state),
 
                 DatePicker::make('purchase_date')->label('Tanggal Pembelian')->required(),
                 DatePicker::make('claim_date')->label('Tanggal Klaim Garansi')->required(),
@@ -136,35 +155,49 @@ class GaransiResource extends Resource
                 Textarea::make('note')->label('Catatan Tambahan')->nullable(),
 
                 Repeater::make('products')
-                    ->label('Detail Produk')->reactive()
+                    ->label('Detail Produk')
+                    ->reactive()
                     ->schema([
-                        Select::make('brand_produk_id')->label('Brand')
+                        Select::make('brand_id')->label('Brand')
                             ->options(fn () => Brand::pluck('name', 'id'))
-                            ->afterStateUpdated(fn ($state, callable $set) => $set('kategori_produk_id', null))
-                            ->required()->searchable(),
+                            ->afterStateUpdated(fn ($state, callable $set) => $set('kategori_id', null))
+                            ->required()
+                            ->searchable(),
 
-                        Select::make('kategori_produk_id')->label('Kategori')
-                            ->options(fn (callable $get) => $get('brand_produk_id')
-                                ? Category::where('brand_id', $get('brand_produk_id'))->pluck('name', 'id')
+                        Select::make('kategori_id')->label('Kategori')
+                            ->options(fn (callable $get) => $get('brand_id')
+                                ? Category::where('brand_id', $get('brand_id'))->pluck('name', 'id')
                                 : [])
                             ->afterStateUpdated(fn ($state, callable $set) => $set('produk_id', null))
-                            ->required()->searchable(),
+                            ->required()
+                            ->searchable(),
 
                         Select::make('produk_id')->label('Produk')
-                            ->options(fn (callable $get) => $get('kategori_produk_id')
-                                ? Product::where('category_id', $get('kategori_produk_id'))->pluck('name', 'id')
+                            ->options(fn (callable $get) => $get('kategori_id')
+                                ? Product::where('category_id', $get('kategori_id'))->pluck('name', 'id')
                                 : [])
-                            ->required()->searchable(),
+                            ->required()
+                            ->searchable(),
 
                         Select::make('warna_id')->label('Warna')
                             ->options(fn (callable $get) => $get('produk_id')
-                                ? collect(Product::find($get('produk_id'))->colors ?? [])->mapWithKeys(fn($c) => [$c => $c])->toArray()
+                                ? collect(Product::find($get('produk_id'))->colors ?? [])->mapWithKeys(fn ($c) => [$c => $c])->toArray()
                                 : [])
-                            ->required()->searchable(),
+                            ->searchable()
+                            ->required(),
 
-                        TextInput::make('quantity')->label('Jumlah')->numeric()->prefix('Qty')->required(),
+                        TextInput::make('quantity')
+                            ->label('Jumlah')
+                            ->numeric()
+                            ->prefix('Qty')
+                            ->required(),
                     ])
-                    ->columns(3)->minItems(1)->defaultItems(1)->createItemButtonLabel('Tambah Produk')->required(),
+                    ->columns(3)
+                    ->minItems(1)
+                    ->defaultItems(1)
+                    ->createItemButtonLabel('Tambah Produk')
+                    ->required(),
+
 
                 FileUpload::make('image')->label('Foto')->image()->directory('garansi-photos')->maxSize(2048),
 
@@ -189,7 +222,11 @@ class GaransiResource extends Resource
                 TextColumn::make('customerCategory.name')->label('Kategori Customer')->sortable()->searchable(),
 
                 TextColumn::make('phone')->label('Phone')->sortable(),
-                TextColumn::make('address')->label('Address')->limit(50),
+                TextColumn::make('address_text')
+                    ->label('Alamat')
+                    ->limit(80)
+                    ->sortable()
+                    ->searchable(),
 
                 TextColumn::make('products_details')->label('Detail Produk')->html()->sortable(),
                 TextColumn::make('purchase_date')->label('Tanggal Pembelian')->date()->sortable(),

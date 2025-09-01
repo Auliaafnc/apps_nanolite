@@ -9,12 +9,12 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\ProductReturnExport;
-use App\Models\Concerns\OwnedByEmployee; // ⬅️ tambah
+use App\Models\Concerns\OwnedByEmployee;
 use App\Models\Concerns\LatestFirst; 
 
 class ProductReturn extends Model
 {
-    use OwnedByEmployee, LatestFirst; // ⬅️ tambah
+    use OwnedByEmployee, LatestFirst;
 
     protected $fillable = [
         'no_return',
@@ -55,6 +55,7 @@ class ProductReturn extends Model
         });
 
         static::saved(function (ProductReturn $return) {
+            // generate PDF
             $html = view('invoices.product-return', compact('return'))->render();
             $pdf = Pdf::loadHtml($html)->setPaper('a4', 'portrait');
 
@@ -62,18 +63,44 @@ class ProductReturn extends Model
             Storage::disk('public')->put($pdfFileName, $pdf->output());
             $return->updateQuietly(['return_file' => $pdfFileName]);
 
+            // generate Excel
             $excelFileName = "Return-{$return->no_return}.xlsx";
             Excel::store(new ProductReturnExport($return), $excelFileName, 'public');
             $return->updateQuietly(['return_excel' => $excelFileName]);
         });
     }
 
+    protected static function consumeImageString(ProductReturn $return): void
+    {
+        $img = (string) ($return->image ?? '');
+        if ($img === '') return;
+
+        // Jika sudah URL http/https, biarkan
+        if (str_starts_with($img, 'http://') || str_starts_with($img, 'https://')) {
+            return;
+        }
+
+        // Data URI? "data:image/png;base64,AAAA..."
+        if (preg_match('/^data:image\/([a-zA-Z0-9.+-]+);base64,/', $img, $m)) {
+            $ext = strtolower($m[1] ?? 'png');
+            $data = substr($img, strpos($img, ',') + 1);
+            $bin  = base64_decode($data, true);
+            if ($bin === false) return;
+
+            $name = 'return-photos/' . now()->format('Ymd_His') . '_' . Str::random(8) . '.' . $ext;
+            Storage::disk('public')->put($name, $bin);
+            $return->image = $name;
+        }
+    }
+
+    // ================= RELASI =================
     public function customer(): BelongsTo { return $this->belongsTo(Customer::class, 'customer_id'); }
-    public function department(){ return $this->belongsTo(Department::class, 'department_id'); }
+    public function department(): BelongsTo { return $this->belongsTo(Department::class, 'department_id'); }
     public function employee(): BelongsTo { return $this->belongsTo(Employee::class, 'employee_id'); }
     public function company(): BelongsTo { return $this->belongsTo(Company::class, 'company_id'); }
     public function category(): BelongsTo { return $this->belongsTo(CustomerCategories::class, 'customer_categories_id'); }
 
+    // ================= PRODUK =================
     public function productsWithDetails(): array
     {
         $raw = $this->products;
@@ -100,4 +127,32 @@ class ProductReturn extends Model
             "{$i['brand_name']} – {$i['category_name']} – {$i['product_name']} – {$i['color']} – Qty: {$i['quantity']}"
         )->implode('<br>');
     }
+
+    // ================= ALAMAT =================
+    public function getAddressTextAttribute(): string
+    {
+        if (is_array($this->address) && count($this->address) > 0) {
+            $addr = $this->address[0];
+
+            $parts = [
+                $addr['detail_alamat'] ?? '',
+                $addr['kelurahan'] ?? '',
+                $addr['kecamatan'] ?? '',
+                $addr['kota_kab'] ?? '',
+                $addr['provinsi'] ?? '',
+                $addr['kode_pos'] ?? '',
+            ];
+
+            // buang yang kosong atau "-"
+            $cleaned = array_filter($parts, function ($v) {
+                $v = trim((string) $v);
+                return $v !== '' && $v !== '-';
+            });
+
+            return implode(', ', $cleaned);
+        }
+
+        return '-';
+    }
+
 }

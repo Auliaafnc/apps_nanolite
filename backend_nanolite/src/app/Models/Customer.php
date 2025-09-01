@@ -47,6 +47,28 @@ class Customer extends Model
     ];
 
 
+    protected static function consumeImageString(Customer $customer): void
+    {
+        $img = (string) ($customer->image ?? '');
+        if ($img === '') return;
+
+        // Jika sudah URL http/https, biarkan
+        if (str_starts_with($img, 'http://') || str_starts_with($img, 'https://')) {
+            return;
+        }
+
+        // Data URI? "data:image/png;base64,AAAA..."
+        if (preg_match('/^data:image\/([a-zA-Z0-9.+-]+);base64,/', $img, $m)) {
+            $ext = strtolower($m[1] ?? 'png');
+            $data = substr($img, strpos($img, ',') + 1);
+            $bin  = base64_decode($data, true);
+            if ($bin === false) return;
+
+            $name = 'return-photos/' . now()->format('Ymd_His') . '_' . Str::random(8) . '.' . $ext;
+            Storage::disk('public')->put($name, $bin);
+            $customer->image = $name;
+        }
+    }
 
     public function company(){ return $this->belongsTo(Company::class); }
     public function department(){ return $this->belongsTo(Department::class, 'department_id'); }

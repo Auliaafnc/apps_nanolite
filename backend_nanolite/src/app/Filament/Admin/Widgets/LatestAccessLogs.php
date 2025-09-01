@@ -7,12 +7,14 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Spatie\Activitylog\Models\Activity;
 
 class LatestAccessLogs extends BaseWidget
 {
     use HasWidgetShield;
+
     protected static ?int $sort = 100;
 
     protected int|string|array $columnSpan = 2;
@@ -46,10 +48,18 @@ class LatestAccessLogs extends BaseWidget
 
     public function table(Table $table): Table
     {
+        // default query
+        $query = Activity::query()->latest()->take(5);
+
+        // ✅ kalau user login BUKAN super_admin, sembunyikan log yang dibuat super_admin
+        if (! Auth::user()->hasRole('super_admin')) {
+            $query->whereHas('causer.roles', function ($q) {
+                $q->where('name', '!=', 'super_admin');
+            });
+        }
+
         return $table
-            ->query(
-                Activity::query()->latest()->take(5)
-            )
+            ->query($query)
             ->columns([
                 Tables\Columns\TextColumn::make('log_name')
                     ->badge()
@@ -57,6 +67,7 @@ class LatestAccessLogs extends BaseWidget
                     ->label(__('filament-logger::filament-logger.resource.label.type'))
                     ->formatStateUsing(fn ($state) => ucwords($state))
                     ->sortable(),
+
                 Tables\Columns\TextColumn::make('event')
                     ->label(__('filament-logger::filament-logger.resource.label.event'))
                     ->sortable(),
@@ -72,7 +83,6 @@ class LatestAccessLogs extends BaseWidget
                         if (! $state) {
                             return '-';
                         }
-
                         return Str::of($state)->afterLast('\\')->headline() . ' # ' . $record->subject_id;
                     }),
 
@@ -81,7 +91,7 @@ class LatestAccessLogs extends BaseWidget
 
                 Tables\Columns\TextColumn::make('created_at')
                     ->label(__('filament-logger::filament-logger.resource.label.logged_at'))
-                    ->dateTime(config('d/m/Y H:i A'))
+                    ->dateTime('d/m/Y H:i:s')
                     ->sortable(),
             ])
             ->paginated(false);

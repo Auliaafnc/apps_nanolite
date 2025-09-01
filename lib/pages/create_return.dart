@@ -1,11 +1,13 @@
 // lib/pages/create_return.dart
+import 'dart:convert';
 import 'dart:io';
-import 'package:flutter/material.dart';
+import 'dart:typed_data';
+
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../services/api_service.dart';
-import '../models/customer.dart';
 
 class CreateReturnScreen extends StatefulWidget {
   const CreateReturnScreen({super.key});
@@ -15,49 +17,42 @@ class CreateReturnScreen extends StatefulWidget {
 }
 
 class _CreateReturnScreenState extends State<CreateReturnScreen> {
-  // ====== Controllers ======
+  // ===== Controllers =====
   final _phoneCtrl = TextEditingController();
   final _addrCtrl = TextEditingController();
   final _amountCtrl = TextEditingController();
   final _reasonCtrl = TextEditingController();
   final _noteCtrl = TextEditingController();
 
-  // ====== State ======
-  List<OptionItem> _departments = [];
-  List<OptionItem> _employees = [];
-  List<OptionItem> _categories = [];
-  List<Customer> _customers = [];
-  List<OptionItem> _products = [];
-List<OptionItem> _colors = [];
-List<OptionItem> _brands = [];
-List<OptionItem> _productCategories = [];
-
-
-
-
+  // ===== Dropdown atas =====
   int? _deptId;
   int? _empId;
   int? _catId;
   int? _custId;
 
-  Customer? _selectedCustomer;
+  List<OptionItem> _departments = [];
+  List<OptionItem> _employees = [];
+  List<OptionItem> _custCats = [];
+  List<OptionItem> _customers = [];
 
-  bool _loadingOptions = false;
+  bool _loadingInit = false;
   bool _loadingEmployees = false;
+  bool _loadingCategories = false;
   bool _loadingCustomers = false;
   bool _submitting = false;
 
-  // Produk list
-  final _items = <_ProductItem>[ _ProductItem() ];
+  // ===== Produk list =====
+  final List<_ReturnRow> _rows = [ _ReturnRow() ];
 
-  // Foto
+  // ===== Foto =====
   final ImagePicker _picker = ImagePicker();
   final List<XFile> _photos = [];
 
   @override
   void initState() {
     super.initState();
-    _loadOptions();
+    _bootstrap();
+    _rows.first.loadBrands(setState);
   }
 
   @override
@@ -70,161 +65,326 @@ List<OptionItem> _productCategories = [];
     super.dispose();
   }
 
-  // ====== LOAD OPTIONS ======
-  Future<void> _loadOptions() async {
-  setState(() => _loadingOptions = true);
-  try {
-    final depts = await ApiService.fetchDepartments();
-    final cats  = await ApiService.fetchCustomerCategories();
-    final prods = await ApiService.fetchProducts(); // tambahkan
-    final cols  = await ApiService.fetchColors();   // tambahkan
-    final brands = await ApiService.fetchBrands();
-final categories = await ApiService.fetchProductCategories();
-
-
-    if (!mounted) return;
-    setState(() {
-      _departments = depts;
-      _categories  = cats;
-      _products    = prods;
-      _colors      = cols;
-      _brands = brands;
-_productCategories = categories;
-
-    });
-  } finally {
-    if (mounted) setState(() => _loadingOptions = false);
+  // ---------------- Bootstrap ----------------
+  Future<void> _bootstrap() async {
+    setState(() => _loadingInit = true);
+    try {
+      final depts = await ApiService.fetchDepartments();
+      if (!mounted) return;
+      setState(() => _departments = depts);
+    } finally {
+      if (mounted) setState(() => _loadingInit = false);
+    }
   }
-}
 
+  // ---------------- Filter kategori ----------------
+  Future<void> _refreshFilteredCategories() async {
+    setState(() {
+      _loadingCategories = true;
+      _catId = null;
+      _custId = null;
+      _custCats = [];
+      _customers = [];
+      _phoneCtrl.clear();
+      _addrCtrl.clear();
+    });
 
+    if (_deptId == null || _empId == null) {
+      if (mounted) setState(() => _loadingCategories = false);
+      return;
+    }
+
+    try {
+      final serverCats = await ApiService.fetchCustomerCategories(employeeId: _empId);
+      final custDeptEmp = await ApiService.fetchCustomersByDeptEmp(
+        departmentId: _deptId!, employeeId: _empId!,
+      );
+      final usedCatIds = custDeptEmp.map((c) => c.categoryId).whereType<int>().toSet();
+
+      List<OptionItem> baseCats = serverCats;
+      if (baseCats.isEmpty) {
+        baseCats = await ApiService.fetchCustomerCategoriesAll();
+      }
+      final filtered = baseCats.where((c) => usedCatIds.contains(c.id)).toList();
+
+      if (!mounted) return;
+      setState(() => _custCats = filtered);
+    } catch (_) {
+      if (mounted) setState(() => _custCats = <OptionItem>[]);
+    } finally {
+      if (mounted) setState(() => _loadingCategories = false);
+    }
+  }
+
+  // ---------------- Handlers dropdown atas ----------------
   Future<void> _onSelectDepartment(int? id) async {
     setState(() {
       _deptId = id;
       _empId = null;
+      _catId = null;
+      _custId = null;
       _employees = [];
+      _custCats = [];
+      _customers = [];
+      _phoneCtrl.clear();
+      _addrCtrl.clear();
       _loadingEmployees = true;
     });
 
-    if (id == null) return;
+    if (id == null) {
+      setState(() => _loadingEmployees = false);
+      return;
+    }
 
-    final emps = await ApiService.fetchEmployees(departmentId: id);
-    if (!mounted) return;
-    setState(() {
-      _employees = emps;
-      _loadingEmployees = false;
-    });
+    try {
+      final emps = await ApiService.fetchEmployees(departmentId: id);
+      if (!mounted) return;
+      setState(() => _employees = emps);
+    } finally {
+      if (mounted) setState(() => _loadingEmployees = false);
+    }
+
+    await _refreshFilteredCategories();
   }
 
   Future<void> _onSelectEmployee(int? id) async {
     setState(() {
       _empId = id;
+      _catId = null;
+      _custId = null;
+      _custCats = [];
+      _customers = [];
+      _phoneCtrl.clear();
+      _addrCtrl.clear();
+    });
+    await _refreshFilteredCategories();
+  }
+
+  Future<void> _onSelectCustomerCategory(int? id) async {
+    setState(() {
+      _catId = id;
       _custId = null;
       _customers = [];
+      _phoneCtrl.clear();
+      _addrCtrl.clear();
       _loadingCustomers = true;
     });
 
-    if (id == null) {
+    if (_deptId == null || _empId == null || id == null) {
       setState(() => _loadingCustomers = false);
       return;
     }
 
     try {
-      final all = await ApiService.fetchCustomers(perPage: 500);
+      final custs = await ApiService.fetchCustomersFiltered(
+        departmentId: _deptId!, employeeId: _empId!, categoryId: id,
+      );
       if (!mounted) return;
-      setState(() {
-        _customers = all.where((c) => c.employeeId == id).toList();
-        _loadingCustomers = false;
-      });
-    } catch (_) {
+      setState(() => _customers = custs);
+    } finally {
       if (mounted) setState(() => _loadingCustomers = false);
     }
   }
 
-  void _onSelectCustomer(Customer cust) {
+  Future<void> _onSelectCustomer(int? id) async {
     setState(() {
-      _custId = cust.id;
-      _selectedCustomer = cust;
-      _phoneCtrl.text = cust.phone;
-      _addrCtrl.text = cust.alamatDisplay;
+      _custId = id;
+      _phoneCtrl.clear();
+      _addrCtrl.clear();
     });
+    if (id == null) return;
+
+    final cust = _customers.firstWhere((c) => c.id == id, orElse: () => OptionItem(id: id, name: '-'));
+    if (cust.phone != null && cust.phone!.isNotEmpty) {
+      _phoneCtrl.text = cust.phone!;
+    }
+
+    if (cust.address != null &&
+        cust.address!.trim().isNotEmpty &&
+        cust.address!.trim() != '-') {
+      _addrCtrl.text = cust.address!;
+      return;
+    }
+
+    try {
+      final raw = await ApiService.fetchCustomerDetailRaw(id);
+      final formatted = ApiService.formatAddress(raw);
+      if (formatted.isNotEmpty && formatted != '-') {
+        _addrCtrl.text = formatted;
+      }
+    } catch (_) {}
   }
 
-  // ====== Foto ======
+  // ---------------- Produk ----------------
+  Future<void> _onBrandChanged(int row, OptionItem? brand) async {
+    setState(() {
+      _rows[row].brand = brand;
+      _rows[row].category = null;
+      _rows[row].product = null;
+      _rows[row].color = null;
+      _rows[row].categories = [];
+      _rows[row].products = [];
+      _rows[row].colors = [];
+    });
+    if (brand != null) {
+      final cats = await ApiService.fetchCategoriesByBrand(brand.id);
+      if (!mounted) return;
+      setState(() => _rows[row].categories = cats);
+    }
+  }
+
+  Future<void> _onRowCategoryChanged(int row, OptionItem? cat) async {
+    setState(() {
+      _rows[row].category = cat;
+      _rows[row].product = null;
+      _rows[row].color = null;
+      _rows[row].products = [];
+      _rows[row].colors = [];
+    });
+    if (cat != null && _rows[row].brand != null) {
+      final prods = await ApiService.fetchProductsByBrandCategory(
+        _rows[row].brand!.id, cat.id,
+      );
+      if (!mounted) return;
+      setState(() => _rows[row].products = prods);
+    }
+  }
+
+  Future<void> _onProductChanged(int row, OptionItem? prod) async {
+    setState(() {
+      _rows[row].product = prod;
+      _rows[row].color = null;
+      _rows[row].colors = [];
+    });
+    if (prod != null) {
+      final cols = await ApiService.fetchColorsByProductFiltered(prod.id);
+      if (!mounted) return;
+      setState(() => _rows[row].colors = cols);
+    }
+  }
+
+  void _onColorChanged(int row, OptionItem? color) {
+    setState(() => _rows[row].color = color);
+  }
+
+  void _onQtyChanged(int row, String txt) {
+    setState(() => _rows[row].qty = int.tryParse(txt) ?? 0);
+  }
+
+  void _addRow() {
+    setState(() => _rows.add(_ReturnRow()));
+    _rows.last.loadBrands(setState);
+  }
+
+  void _removeRow(int i) => setState(() => _rows.removeAt(i));
+
+  // ---------------- Foto ----------------
   Future<void> _pickFromGallery() async {
-    final files = await _picker.pickMultiImage(imageQuality: 85);
-    if (files.isNotEmpty) setState(() => _photos.addAll(files));
+    try {
+      final files = await _picker.pickMultiImage(imageQuality: 85);
+      if (files.isNotEmpty) setState(() => _photos.addAll(files));
+    } catch (_) {}
   }
 
   Future<void> _pickFromCamera() async {
-    final file = await _picker.pickImage(source: ImageSource.camera, imageQuality: 85);
-    if (file != null) setState(() => _photos.add(file));
+    try {
+      final f = await _picker.pickImage(source: ImageSource.camera, imageQuality: 85);
+      if (f != null) setState(() => _photos.add(f));
+    } catch (_) {}
   }
 
   void _removePhoto(int i) => setState(() => _photos.removeAt(i));
 
-  void _addProduk() => setState(() => _items.add(_ProductItem()));
-  void _removeProduk(int i) => setState(() => _items.removeAt(i));
-
-  // ====== Submit ======
+  // ---------------- Submit ----------------
   Future<void> _submit() async {
-    FocusScope.of(context).unfocus();
-
-    if (_deptId == null || _empId == null || _catId == null || _custId == null ||
-        _phoneCtrl.text.isEmpty || _addrCtrl.text.isEmpty ||
-        _amountCtrl.text.isEmpty || _reasonCtrl.text.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Lengkapi field yang wajib *')),
-      );
+    if (_deptId == null ||
+        _empId == null ||
+        _catId == null ||
+        _custId == null ||
+        _amountCtrl.text.isEmpty ||
+        _reasonCtrl.text.isEmpty ||
+        _rows.isEmpty) {
+      _snack('Lengkapi form terlebih dahulu.');
       return;
     }
 
+    final address = <Map<String, dynamic>>[
+    {
+      'provinsi': '-',
+      'kota_kab': '-',
+      'kecamatan': '-',
+      'kelurahan': '-',
+      'kode_pos': '-',
+      'detail_alamat': _addrCtrl.text.trim().isEmpty ? '-' : _addrCtrl.text.trim(),
+    }
+  ];
+
+  final products = <Map<String, dynamic>>[];
+  for (final r in _rows) {
+    if (r.product == null || (r.qty ?? 0) <= 0) continue;
+    products.add({
+      'produk_id': r.product!.id.toString(),
+      'warna_id': r.color != null ? r.color!.id.toString() : '-',
+      'quantity': (r.qty ?? 0).toString(),
+      'brand_id': r.brand?.id.toString() ?? '-',
+      'kategori_id': r.category?.id.toString() ?? '-',
+    });
+  }
+
+    if (products.isEmpty) {
+      _snack('Minimal 1 produk dengan Qty > 0.');
+      return;
+    }
+
+    String? imageStr;
+    if (_photos.isNotEmpty) {
+      try {
+        final first = _photos.first;
+        final bytes = await first.readAsBytes();
+        final n = (first.name.isNotEmpty ? first.name : first.path).toLowerCase();
+        final mime = n.endsWith('.png')
+            ? 'image/png'
+            : n.endsWith('.webp')
+                ? 'image/webp'
+                : 'image/jpeg';
+        imageStr = 'data:$mime;base64,${base64Encode(bytes)}';
+      } catch (_) {}
+    }
+
     setState(() => _submitting = true);
+    final ok = await ApiService.createReturn(
+      companyId: 1,
+      departmentId: _deptId!,
+      employeeId: _empId!,
+      customerId: _custId!,
+      categoryId: _catId!,
+      phone: _phoneCtrl.text.trim(),
+      address: address,
+      amount: int.tryParse(_amountCtrl.text.trim()) ?? 0,
+      reason: _reasonCtrl.text.trim(),
+      note: _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim(),
+      products: products,
+      imagePath: imageStr,
+    );
+    if (mounted) setState(() => _submitting = false);
 
-    try {
-      final ok = await ApiService.createReturn(
-  companyId: 1, // contoh, ambil dari user login / fixed
-  departmentId: _deptId!,
-  employeeId: _empId!,
-  customerId: _custId!,
-  categoryId: _catId!,  // <-- ini akan masuk ke customer_categories_id
-  phone: _phoneCtrl.text.trim(),
-  address: AddressInput(
-    provinsiCode: "",
-    kotaKabCode: "",
-    kecamatanCode: "",
-    kelurahanCode: "",
-    kodePos: "",
-    detailAlamat: _addrCtrl.text.trim(),
-  ),
-  amount: int.tryParse(_amountCtrl.text.trim()) ?? 0,
-  reason: _reasonCtrl.text.trim(),
-  note: _noteCtrl.text.trim(),
-  products: _items.map((e) => e.toMap()).toList(),
-  photos: _photos,
-);
-
-      if (!mounted) return;
-      if (ok) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Return berhasil dibuat'), backgroundColor: Colors.green),
-        );
-        Navigator.pop(context, true);
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Gagal membuat return'), backgroundColor: Colors.red),
-        );
-      }
-    } finally {
-      if (mounted) setState(() => _submitting = false);
+    if (!mounted) return;
+    if (ok) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Return berhasil dibuat'), backgroundColor: Colors.green),
+      );
+      Navigator.pop(context, true);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Gagal membuat return'), backgroundColor: Colors.red),
+      );
     }
   }
 
-  // ====== UI ======
+  // ---------------- UI ----------------
   @override
   Widget build(BuildContext context) {
-    final disabledAll = _loadingOptions || _submitting;
-
+    final disabledAll = _loadingInit || _submitting;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Create Return'),
@@ -233,111 +393,149 @@ _productCategories = categories;
         elevation: 1,
       ),
       backgroundColor: const Color(0xFF0A1B2D),
-      body: _loadingOptions
+      body: _loadingInit
           ? const Center(child: CircularProgressIndicator())
           : SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final isTablet = constraints.maxWidth >= 600;
-              final fieldWidth = isTablet
-                  ? (constraints.maxWidth - 60) / 2
-                  : (constraints.maxWidth - 20) / 2;
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final bool isTablet = constraints.maxWidth >= 600;
+                    final double fieldWidth =
+                        isTablet ? (constraints.maxWidth - 60) / 2 : (constraints.maxWidth - 20) / 2;
 
-              return AbsorbPointer(
-                absorbing: disabledAll,
-                child: Opacity(
-                  opacity: disabledAll ? 0.6 : 1,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text('Data Return',
-                          style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 16),
+                    return AbsorbPointer(
+                      absorbing: disabledAll,
+                      child: Opacity(
+                        opacity: disabledAll ? 0.6 : 1,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Form Return',
+                              style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 20),
 
-                      Wrap(
-                        spacing: 20,
-                        runSpacing: 16,
-                        children: [
-                          _dropdownInt('Departemen *',
-                              width: fieldWidth,
-                              value: _deptId,
-                              items: _departments,
-                              onChanged: (v) => _onSelectDepartment(v)),
-                          _dropdownInt('Karyawan *',
-                              width: fieldWidth,
-                              value: _empId,
-                              items: _employees,
-                              onChanged: (v) => _onSelectEmployee(v),
-                              loading: _loadingEmployees),
-                          _dropdownInt('Kategori Customer *',
-                              width: fieldWidth,
-                              value: _catId,
-                              items: _categories,
-                              onChanged: (v) => setState(() => _catId = v)),
-                          _dropdownCustomer('Customer *',
-                              width: fieldWidth,
-                              value: _custId,
-                              items: _customers,
-                              onChanged: (cust) => _onSelectCustomer(cust),
-                              loading: _loadingCustomers),
-                          _textField('Phone *', _phoneCtrl, fieldWidth),
-                          _textField('Address', _addrCtrl, fieldWidth, maxLines: 2),
-                          _textField('Nominal *', _amountCtrl, fieldWidth,
-                              keyboard: TextInputType.number, prefix: 'Rp '),
-                          _textField('Alasan Return *', _reasonCtrl, fieldWidth, maxLines: 2),
-                          _textField('Catatan Tambahan', _noteCtrl, fieldWidth, maxLines: 2, hint: 'Opsional'),
-                        ],
-                      ),
+                            Wrap(
+                              spacing: 20,
+                              runSpacing: 16,
+                              children: [
+                                _dropdownInt('Departemen *',
+                                  width: fieldWidth,
+                                  value: _deptId,
+                                  items: _departments,
+                                  onChanged: _onSelectDepartment,
+                                ),
 
-                      const SizedBox(height: 30),
-                      const Text('Gambar', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 10),
-                      _buildPhotos(),
+                                _dropdownInt('Karyawan *',
+                                  width: fieldWidth,
+                                  value: _empId,
+                                  items: _employees,
+                                  onChanged: _onSelectEmployee,
+                                  loading: _loadingEmployees,
+                                ),
 
-                      const SizedBox(height: 30),
-                      const Text('Detail Produk', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                      const SizedBox(height: 10),
+                                _dropdownInt('Kategori Customer *',
+                                  width: fieldWidth,
+                                  value: _catId,
+                                  items: _custCats,
+                                  onChanged: _onSelectCustomerCategory,
+                                  loading: _loadingCategories,
+                                ),
 
-                      Column(children: List.generate(_items.length, (i) => _productCard(i))),
-                      const SizedBox(height: 12),
-                      Align(
-                        alignment: Alignment.centerRight,
-                        child: ElevatedButton.icon(
-                          onPressed: _addProduk,
-                          icon: const Icon(Icons.add),
-                          label: const Text('Tambah Produk'),
-                          style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
+                                _dropdownCustomer('Customer *',
+                                  width: fieldWidth,
+                                  value: _custId,
+                                  items: _customers,
+                                  onChanged: (cust) => _onSelectCustomer(cust.id),
+                                  loading: _loadingCustomers,
+                                ),
+
+                                _tf('Phone *', _phoneCtrl, width: fieldWidth),
+                                _tf('Address', _addrCtrl, width: fieldWidth, maxLines: 2),
+                                _tf('Nominal *', _amountCtrl, width: fieldWidth, keyboard: TextInputType.number, prefix: 'Rp '),
+                                _tf('Alasan Return *', _reasonCtrl, width: fieldWidth, maxLines: 2),
+                                _tf('Catatan Tambahan', _noteCtrl, width: fieldWidth, maxLines: 2, hint: 'Opsional'),
+                              ],
+                            ),
+
+                            const SizedBox(height: 20),
+                            _buildPhotos(),
+                            const SizedBox(height: 20),
+
+                            const Text('Detail Produk',
+                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                            const SizedBox(height: 10),
+
+                            Column(children: List.generate(_rows.length, (i) => _productCard(i))),
+                            const SizedBox(height: 12),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: ElevatedButton.icon(
+                                onPressed: _addRow,
+                                icon: const Icon(Icons.add),
+                                label: const Text('Tambah Produk'),
+                                style: ElevatedButton.styleFrom(backgroundColor: Colors.blue),
+                              ),
+                            ),
+
+                            const SizedBox(height: 30),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                _formButton('Cancel', Colors.grey, () => Navigator.pop(context, false)),
+                                const SizedBox(width: 12),
+                                _formButton('Create', Colors.blue, _submitting ? null : _submit,
+                                    showSpinner: _submitting),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
-
-                      const SizedBox(height: 30),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          _formButton('Cancel', Colors.grey, () {
-                            Navigator.pop(context, false);
-                          }),
-                          const SizedBox(width: 12),
-                          _formButton('Create', Colors.blue, _submitting ? null : _submit,
-                              showSpinner: _submitting),
-                        ],
-                      ),
-                    ],
-                  ),
+                    );
+                  },
                 ),
-              );
-            },
-          ),
-        ),
-      ),
+              ),
+            ),
     );
   }
 
-  // ====== Helpers UI (sama gaya Customer) ======
-  Widget _textField(String label, TextEditingController c, double width,
-      {int maxLines = 1, TextInputType? keyboard, String? hint, String? prefix}) {
+  // ---------- Widgets kecil ----------
+  Widget _tf(String label, TextEditingController c,
+      {double? width, int maxLines = 1, String? hint, TextInputType? keyboard, String? prefix}) {
+    final field = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(color: Colors.white)),
+        const SizedBox(height: 6),
+        TextFormField(
+          controller: c,
+          maxLines: maxLines,
+          keyboardType: keyboard,
+          style: const TextStyle(color: Colors.white),
+          decoration: InputDecoration(
+            hintText: hint,
+            prefixText: prefix,
+            hintStyle: const TextStyle(color: Colors.white38),
+            filled: true,
+            fillColor: const Color(0xFF22344C),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          ),
+        ),
+      ],
+    );
+    if (width == null) return field;
+    return SizedBox(width: width, child: field);
+  }
+
+  Widget _dropdownInt(String label,
+      {required double width,
+      required int? value,
+      required List<OptionItem> items,
+      required ValueChanged<int?> onChanged,
+      bool loading = false}) {
     return SizedBox(
       width: width,
       child: Column(
@@ -345,106 +543,69 @@ _productCategories = categories;
         children: [
           Text(label, style: const TextStyle(color: Colors.white)),
           const SizedBox(height: 6),
-          TextFormField(
-            controller: c,
-            maxLines: maxLines,
-            keyboardType: keyboard,
-            style: const TextStyle(color: Colors.white),
+          DropdownButtonFormField<int>(
+            value: value,
+            items: items.map((o) => DropdownMenuItem(value: o.id, child: Text(o.name))).toList(),
+            onChanged: loading ? null : onChanged,
             decoration: InputDecoration(
-              hintText: hint,
-              prefixText: prefix,
               filled: true,
               fillColor: const Color(0xFF22344C),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
               contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
             ),
+            dropdownColor: Colors.grey[900],
+            iconEnabledColor: Colors.white,
+            style: const TextStyle(color: Colors.white),
           ),
         ],
       ),
     );
   }
 
- Widget _dropdownInt(String label,
-    {required double width,
-    required int? value,
-    required List<OptionItem> items,
-    required ValueChanged<int?> onChanged,
-    bool loading = false}) {
-  return SizedBox(
-    width: width,
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label,
-            style: const TextStyle(
-                color: Colors.white, fontWeight: FontWeight.w500)),
-        const SizedBox(height: 6),
-        DropdownButtonFormField<int>(
-          value: value,
-          items: items
-              .map((o) =>
-                  DropdownMenuItem(value: o.id, child: Text(o.name)))
-              .toList(),
-          onChanged: loading ? null : onChanged,
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: const Color(0xFF22344C),
-            border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8)),
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+  Widget _dropdownCustomer(String label,
+      {required double width,
+      required int? value,
+      required List<OptionItem> items,
+      required ValueChanged<OptionItem> onChanged,
+      bool loading = false}) {
+    return SizedBox(
+      width: width,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: const TextStyle(color: Colors.white)),
+          const SizedBox(height: 6),
+          DropdownButtonFormField<int>(
+            value: value,
+            items: items.map((c) => DropdownMenuItem(value: c.id, child: Text(c.name))).toList(),
+            onChanged: loading
+                ? null
+                : (v) {
+                    if (v == null) {
+                      onChanged(OptionItem(id: 0, name: '-'));
+                      return;
+                    }
+                    final cust = items.firstWhere((c) => c.id == v);
+                    onChanged(cust);
+                  },
+            decoration: InputDecoration(
+              filled: true,
+              fillColor: const Color(0xFF22344C),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            ),
+            dropdownColor: Colors.grey[900],
+            iconEnabledColor: Colors.white,
+            style: const TextStyle(color: Colors.white),
           ),
-          dropdownColor: Colors.grey[900],
-          style: const TextStyle(color: Colors.white),
-        ),
-      ],
-    ),
-  );
-}
+        ],
+      ),
+    );
+  }
 
-Widget _dropdownCustomer(String label,
-    {required double width,
-    required int? value,
-    required List<Customer> items,
-    required ValueChanged<Customer> onChanged,
-    bool loading = false}) {
-  return SizedBox(
-    width: width,
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label,
-            style: const TextStyle(
-                color: Colors.white, fontWeight: FontWeight.w500)),
-        const SizedBox(height: 6),
-        DropdownButtonFormField<int>(
-          value: value,
-          items: items
-              .map((c) =>
-                  DropdownMenuItem(value: c.id, child: Text(c.name)))
-              .toList(),
-          onChanged: loading
-              ? null
-              : (v) {
-                  final cust = items.firstWhere((c) => c.id == v);
-                  onChanged(cust);
-                },
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: const Color(0xFF22344C),
-            border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8)),
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-          ),
-          dropdownColor: Colors.grey[900],
-          style: const TextStyle(color: Colors.white),
-        ),
-      ],
-    ),
-  );
-}
-
+  void _snack(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+  }
 
   Widget _buildPhotos() {
     return Container(
@@ -467,15 +628,13 @@ Widget _dropdownCustomer(String label,
                       onPressed: _pickFromGallery,
                       icon: const Icon(Icons.photo_library),
                       label: const Text('Pilih Foto'),
-                      style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.white),
+                      style: OutlinedButton.styleFrom(foregroundColor: Colors.white),
                     ),
                     OutlinedButton.icon(
                       onPressed: _pickFromCamera,
                       icon: const Icon(Icons.photo_camera),
                       label: const Text('Kamera'),
-                      style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.white),
+                      style: OutlinedButton.styleFrom(foregroundColor: Colors.white),
                     ),
                   ],
                 )
@@ -495,22 +654,12 @@ Widget _dropdownCustomer(String label,
                           final bytes = await photo.readAsBytes();
                           return ClipRRect(
                             borderRadius: BorderRadius.circular(8),
-                            child: Image.memory(
-                              bytes,
-                              width: 90,
-                              height: 90,
-                              fit: BoxFit.cover,
-                            ),
+                            child: Image.memory(bytes, width: 90, height: 90, fit: BoxFit.cover),
                           );
                         } else {
                           return ClipRRect(
                             borderRadius: BorderRadius.circular(8),
-                            child: Image.file(
-                              File(photo.path),
-                              width: 90,
-                              height: 90,
-                              fit: BoxFit.cover,
-                            ),
+                            child: Image.file(File(photo.path), width: 90, height: 90, fit: BoxFit.cover),
                           );
                         }
                       }(),
@@ -519,8 +668,7 @@ Widget _dropdownCustomer(String label,
                           return const SizedBox(
                             width: 90,
                             height: 90,
-                            child: Center(
-                                child: CircularProgressIndicator()),
+                            child: Center(child: CircularProgressIndicator()),
                           );
                         }
                         return Stack(
@@ -530,8 +678,7 @@ Widget _dropdownCustomer(String label,
                               right: -6,
                               top: -6,
                               child: IconButton(
-                                icon: const Icon(Icons.cancel,
-                                    color: Colors.redAccent),
+                                icon: const Icon(Icons.cancel, color: Colors.redAccent),
                                 onPressed: () => _removePhoto(i),
                               ),
                             ),
@@ -548,16 +695,14 @@ Widget _dropdownCustomer(String label,
                       onPressed: _pickFromGallery,
                       icon: const Icon(Icons.add_photo_alternate),
                       label: const Text('Tambah Foto'),
-                      style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.white),
+                      style: OutlinedButton.styleFrom(foregroundColor: Colors.white),
                     ),
                     const SizedBox(width: 10),
                     OutlinedButton.icon(
                       onPressed: _pickFromCamera,
                       icon: const Icon(Icons.photo_camera),
                       label: const Text('Kamera'),
-                      style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.white),
+                      style: OutlinedButton.styleFrom(foregroundColor: Colors.white),
                     ),
                   ],
                 )
@@ -566,8 +711,10 @@ Widget _dropdownCustomer(String label,
     );
   }
 
-
+  // ---------- Kartu produk ----------
   Widget _productCard(int i) {
+    const gap = 16.0;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
@@ -586,148 +733,209 @@ Widget _dropdownCustomer(String label,
             ),
             child: Row(
               children: [
-                Text('Produk ${i+1}', style: const TextStyle(color: Colors.white70)),
+                const Icon(Icons.swap_vert, color: Colors.white54, size: 18),
+                const SizedBox(width: 8),
+                Text('Produk ${i + 1}', style: const TextStyle(color: Colors.white70)),
                 const Spacer(),
                 IconButton(
+                  tooltip: 'Hapus',
                   icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-                  onPressed: () => _removeProduk(i),
-                )
+                  onPressed: () => _removeRow(i),
+                ),
               ],
             ),
           ),
+
           Padding(
-            padding: const EdgeInsets.all(12),
-            child: Wrap(
-              spacing: 16,
-              runSpacing: 16,
-              children: [
-                DropdownButtonFormField<int>(
-  value: _items[i].brandId,
-  items: _brands.map((b) =>
-      DropdownMenuItem<int>(value: b.id, child: Text(b.name))).toList(),
-  onChanged: (v) => setState(() => _items[i].brandId = v),
-  decoration: InputDecoration(labelText: 'Brand *'),
-),
-
-DropdownButtonFormField<int>(
-  value: _items[i].kategoriId,
-  items: _productCategories.map((c) =>
-      DropdownMenuItem<int>(value: c.id, child: Text(c.name))).toList(),
-  onChanged: (v) => setState(() => _items[i].kategoriId = v),
-  decoration: InputDecoration(labelText: 'Kategori *'),
-),
-               DropdownButtonFormField<int>(
-  value: _items[i].produkId,
-  items: _products.map((p) =>
-      DropdownMenuItem<int>(value: p.id, child: Text(p.name))
-  ).toList(),
-  onChanged: (v) => setState(() => _items[i].produkId = v),
-  decoration: InputDecoration(
-    labelText: 'Produk *',
-    filled: true,
-    fillColor: const Color(0xFF22344C),
-    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-  ),
-  dropdownColor: Colors.grey[900],
-  style: const TextStyle(color: Colors.white),
-),
-                DropdownButtonFormField<int>(
-  value: _items[i].warnaId,
-  items: _colors
-      .map((c) => DropdownMenuItem<int>(
-            value: c.id,
-            child: Text(c.name),
-          ))
-      .toList(),
-  onChanged: (v) => setState(() => _items[i].warnaId = v),
-  decoration: InputDecoration(
-    labelText: 'Warna *',
-    filled: true,
-    fillColor: const Color(0xFF22344C),
-    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
-  ),
-  dropdownColor: Colors.grey[900],
-  style: const TextStyle(color: Colors.white),
-),
-
-
-
-                _qtyField('Jumlah *', _items[i].qty?.toString() ?? '',
-                        (txt) => setState(() => _items[i].qty = int.tryParse(txt))),
-              ],
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
+            child: LayoutBuilder(
+              builder: (context, inner) {
+                final double itemWidth = (inner.maxWidth - gap) / 2;
+                return Wrap(
+                  spacing: gap,
+                  runSpacing: 16,
+                  children: [
+                    SizedBox(
+                      width: itemWidth,
+                      child: _pillDropdown<OptionItem>(
+                        label: 'Brand *',
+                        value: _rows[i].brand,
+                        items: _rows[i].brands,
+                        onChanged: (v) => _onBrandChanged(i, v),
+                      ),
+                    ),
+                    SizedBox(
+                      width: itemWidth,
+                      child: _pillDropdown<OptionItem>(
+                        label: 'Kategori *',
+                        value: _rows[i].category,
+                        items: _rows[i].categories,
+                        onChanged: (v) => _onRowCategoryChanged(i, v),
+                      ),
+                    ),
+                    SizedBox(
+                      width: itemWidth,
+                      child: _pillDropdown<OptionItem>(
+                        label: 'Produk *',
+                        value: _rows[i].product,
+                        items: _rows[i].products,
+                        onChanged: (v) => _onProductChanged(i, v),
+                      ),
+                    ),
+                    SizedBox(
+                      width: itemWidth,
+                      child: _pillDropdown<OptionItem>(
+                        label: 'Warna',
+                        value: _rows[i].color,
+                        items: _rows[i].colors,
+                        onChanged: (v) => _onColorChanged(i, v),
+                      ),
+                    ),
+                    SizedBox(
+                      width: itemWidth,
+                      child: _qtyField(
+                        label: 'Jumlah *',
+                        value: _rows[i].qty?.toString(),
+                        onChanged: (txt) => _onQtyChanged(i, txt),
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
-          )
+          ),
         ],
       ),
     );
   }
 
-  Widget _pillDropdown(String label, List<String> options, String? value, ValueChanged<String?> onChanged) {
-    return SizedBox(
-      width: 160,
-      child: DropdownButtonFormField<String>(
-        value: value,
-        items: options.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
-        onChanged: onChanged,
-        decoration: InputDecoration(
-          labelText: label,
-          filled: true,
-          fillColor: const Color(0xFF22344C),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+  Widget _pillDropdown<T>({
+    required String label,
+    required T? value,
+    required List<T> items,
+    required ValueChanged<T?> onChanged,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(color: Colors.white)),
+        const SizedBox(height: 6),
+        DropdownButtonFormField<T>(
+         isExpanded: true,
+          value: value,
+          items: items
+            .map((e) => DropdownMenuItem<T>(
+                  value: e,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 200), 
+                    child: Flexible( 
+                      child: Text(
+                        (e is OptionItem) ? e.name : e.toString(),
+                        softWrap: true,                
+                        overflow: TextOverflow.visible, 
+                        maxLines: null,                 
+                        style: const TextStyle(color: Colors.white),
+                      ),
+
+                    ),
+                  ),
+                ))
+            .toList(),
+          onChanged: onChanged,
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: const Color(0xFF22344C),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            suffixIcon: value == null
+                ? null
+                : IconButton(
+                    tooltip: 'Clear',
+                    icon: const Icon(Icons.close, size: 18, color: Colors.white70),
+                    onPressed: () => onChanged(null),
+                  ),
+          ),
+          dropdownColor: Colors.grey[900],
+          iconEnabledColor: Colors.white,
+          style: const TextStyle(color: Colors.white),
         ),
-        dropdownColor: Colors.grey[900],
-        style: const TextStyle(color: Colors.white),
-      ),
+      ],
     );
   }
 
-  Widget _qtyField(String label, String value, ValueChanged<String> onChanged) {
-    return SizedBox(
-      width: 160,
-      child: TextFormField(
-        initialValue: value,
-        keyboardType: TextInputType.number,
-        onChanged: onChanged,
-        style: const TextStyle(color: Colors.white),
-        decoration: InputDecoration(
-          labelText: label,
-          filled: true,
-          fillColor: const Color(0xFF22344C),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+  Widget _qtyField({
+    required String label,
+    String? value,
+    required ValueChanged<String> onChanged,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(color: Colors.white)),
+        const SizedBox(height: 6),
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF22344C),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.white24),
+              ),
+              child: const Text('Qty', style: TextStyle(color: Colors.white70)),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: TextFormField(
+                initialValue: value,
+                keyboardType: TextInputType.number,
+                onChanged: onChanged,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  filled: true,
+                  fillColor: const Color(0xFF22344C),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                ),
+              ),
+            ),
+          ],
         ),
-      ),
+      ],
     );
   }
 
-  Widget _formButton(String text, Color color, VoidCallback? onPressed, {bool showSpinner=false}) {
+
+  Widget _formButton(String text, Color color, VoidCallback? onPressed, {bool showSpinner = false}) {
     return ElevatedButton(
       onPressed: onPressed,
       style: ElevatedButton.styleFrom(
-          backgroundColor: color, foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14)),
+        backgroundColor: color,
+        foregroundColor: Colors.white,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      ),
       child: showSpinner
-          ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+          ? const SizedBox(height: 18, width: 18, child: CircularProgressIndicator(strokeWidth: 2))
           : Text(text),
     );
   }
 }
 
-class _ProductItem {
-  int? produkId;
-  int? warnaId;
+// ===== Model baris =====
+class _ReturnRow {
+  OptionItem? brand;
+  OptionItem? category;
+  OptionItem? product;
+  OptionItem? color;
   int? qty;
-  int? brandId;
-  int? kategoriId;
 
-  _ProductItem({this.produkId, this.warnaId, this.qty, this.brandId, this.kategoriId});
+  List<OptionItem> brands = [];
+  List<OptionItem> categories = [];
+  List<OptionItem> products = [];
+  List<OptionItem> colors = [];
 
-  Map<String, dynamic> toMap() => {
-        'produk_id': produkId,
-        'warna_id': warnaId,
-        'quantity': qty ?? 0,
-        'brand_id': brandId,
-        'kategori_id': kategoriId,
-      };
+  Future<void> loadBrands(void Function(VoidCallback fn) setState) async {
+    final b = await ApiService.fetchBrands();
+    setState(() => brands = b);
+  }
 }
-
-

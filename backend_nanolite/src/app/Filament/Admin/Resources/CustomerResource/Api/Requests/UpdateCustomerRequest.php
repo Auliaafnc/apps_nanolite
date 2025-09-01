@@ -1,10 +1,10 @@
 <?php
 
-namespace App\Filament\Admin\Resources\ProductReturnResource\Api\Requests;
+namespace App\Filament\Admin\Resources\CustomerResource\Api\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class UpdateProductReturnRequest extends FormRequest
+class UpdateCustomerRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -17,34 +17,35 @@ class UpdateProductReturnRequest extends FormRequest
             'company_id'             => 'sometimes|exists:companies,id',
             'customer_categories_id' => 'sometimes|exists:customer_categories,id',
             'department_id'          => 'sometimes|exists:departments,id',
-            'customer_id'            => 'sometimes|exists:customers,id',
             'employee_id'            => 'sometimes|exists:employees,id',
+            'customer_program_id'    => 'sometimes|exists:customer_programs,id',
 
-            'reason' => 'sometimes|string',
-            'amount' => 'sometimes|numeric|min:0',
+            'name'   => 'sometimes|string|max:255',
             'phone'  => 'sometimes|string|max:20',
-            'note'   => 'nullable|string',
+            'email'  => 'nullable|email',
 
-            // ✅ alamat repeater
-            'address'                       => 'nullable|array',
-            'address.*.detail_alamat'       => 'sometimes|string',
-            'address.*.kelurahan'           => 'sometimes|string',
-            'address.*.kecamatan'           => 'sometimes|string',
-            'address.*.kota_kab'            => 'sometimes|string',
-            'address.*.provinsi'            => 'sometimes|string',
-            'address.*.kode_pos'            => 'sometimes|string',
+            // ✅ alamat array (pakai code + name biar full sama dengan Create)
+            'address'                        => 'nullable|array',
+            'address.*.detail_alamat'        => 'sometimes|string',
+            'address.*.provinsi_code'        => 'sometimes|string',
+            'address.*.provinsi_name'        => 'sometimes|string',
+            'address.*.kota_kab_code'        => 'sometimes|string',
+            'address.*.kota_kab_name'        => 'sometimes|string',
+            'address.*.kecamatan_code'       => 'sometimes|string',
+            'address.*.kecamatan_name'       => 'sometimes|string',
+            'address.*.kelurahan_code'       => 'sometimes|string',
+            'address.*.kelurahan_name'       => 'sometimes|string',
+            'address.*.kode_pos'             => 'sometimes|string',
 
-            // ✅ produk
-            'products'                      => 'nullable|array|min:1',
-            'products.*.produk_id'          => 'required_with:products|integer|exists:products,id',
-            'products.*.warna_id'           => 'required_with:products|string',
-            'products.*.quantity'           => 'required_with:products|integer|min:1',
+            'gmaps_link'  => 'nullable|string',
+            'jumlah_program' => 'nullable|integer',
+            'reward_point'   => 'nullable|integer',
 
-            // ✅ multi foto update
-            'image'   => 'nullable|array',
+            // ✅ multi foto
+            'image'   => 'nullable',
             'image.*' => 'file|image|max:2048',
 
-            'status'  => 'nullable|string|in:pending,approved,rejected',
+            'status'  => 'nullable|string|in:active,inactive,pending',
         ];
     }
 }

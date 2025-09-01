@@ -332,13 +332,7 @@ class _GaransiScreenState extends State<GaransiScreen> {
         );
         if (!mounted) return;
         if (created == true) {
-          await _fetch();
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Garansi berhasil dibuat'),
-              backgroundColor: Colors.green,
-            ),
-          );
+          await _fetch(); // refresh list
         }
       },
       icon: const Icon(Icons.workspace_premium),

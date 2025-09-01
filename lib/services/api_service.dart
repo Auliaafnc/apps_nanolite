@@ -7,6 +7,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/customer.dart';
+import '../models/employee_profile.dart';
 import '../models/garansi_row.dart';
 import '../models/order_row.dart';
 import '../models/return_row.dart';
@@ -16,12 +17,12 @@ class OptionItem {
   final int id;
   final String name;
   final int? categoryId;
-  final int? employeeId;   // 🔥 baru
-  final int? departmentId; // 🔥 baru
+  final int? employeeId;
+  final int? departmentId;
   final String? phone;
   final String? address;
-  final String? programName; // opsional
-  final int? programId; // opsional
+  final String? programName;
+  final int? programId;
 
   OptionItem({
     required this.id,
@@ -36,28 +37,27 @@ class OptionItem {
   });
 
   factory OptionItem.fromJson(Map<String, dynamic> json) {
-  // --- id ---
-  int idVal = 0;
-  final idCandidates = [
-    json['id'],
-    json['customer_id'],
-    json['category_id'],
-    json['program_id'],
-    json['value'],
-  ];
-  for (final c in idCandidates) {
-    if (c is int) {
-      idVal = c;
-      break;
+    // --- id ---
+    int idVal = 0;
+    final idCandidates = [
+      json['id'],
+      json['customer_id'],
+      json['category_id'],
+      json['program_id'],
+      json['value'],
+      json['code'], // untuk wilayah (laravolt)
+    ];
+    for (final c in idCandidates) {
+      if (c is int) {
+        idVal = c;
+        break;
+      }
+      final parsed = int.tryParse('${c ?? ''}');
+      if (parsed != null) {
+        idVal = parsed;
+        break;
+      }
     }
-    final parsed = int.tryParse('${c ?? ''}');
-    if (parsed != null) {
-      idVal = parsed;
-      break;
-    }
-  }
-  
-
 
     // --- name ---
     final nameCandidates = [
@@ -78,16 +78,24 @@ class OptionItem {
       }
     }
 
-    // --- address -> selalu dihasilkan string yang manusiawi ---
+    // --- address -> string manusiawi ---
     String addressText = '-';
     if (json['address'] is List && (json['address'] as List).isNotEmpty) {
       final addr = json['address'][0];
       if (addr is Map) {
         final detail = addr['detail_alamat']?.toString() ?? '';
-        final kel = addr['kelurahan']?['name']?.toString() ?? '';
-        final kec = addr['kecamatan']?['name']?.toString() ?? '';
-        final kota = addr['kota_kab']?['name']?.toString() ?? '';
-        final prov = addr['provinsi']?['name']?.toString() ?? '';
+        final kel = addr['kelurahan']?['name']?.toString() ??
+            addr['kelurahan_name']?.toString() ??
+            '';
+        final kec = addr['kecamatan']?['name']?.toString() ??
+            addr['kecamatan_name']?.toString() ??
+            '';
+        final kota = addr['kota_kab']?['name']?.toString() ??
+            addr['kota_kab_name']?.toString() ??
+            '';
+        final prov = addr['provinsi']?['name']?.toString() ??
+            addr['provinsi_name']?.toString() ??
+            '';
         final kodePos = addr['kode_pos']?.toString() ?? '';
         final parts = [detail, kel, kec, kota, prov, kodePos]
             .where((e) => e.trim().isNotEmpty && e.toLowerCase() != 'null')
@@ -104,8 +112,12 @@ class OptionItem {
       id: idVal,
       name: nameVal,
       categoryId: ApiService._extractCategoryId(json),
-      employeeId: json['employee_id'] != null ? int.tryParse('${json['employee_id']}') : null,
-      departmentId: json['department_id'] != null ? int.tryParse('${json['department_id']}') : null,
+      employeeId: json['employee_id'] != null
+          ? int.tryParse('${json['employee_id']}')
+          : null,
+      departmentId: json['department_id'] != null
+          ? int.tryParse('${json['department_id']}')
+          : null,
       phone: json['phone']?.toString(),
       address: addressText,
       programName: json['customer_program']?['name'],
@@ -118,13 +130,23 @@ class OptionItem {
 }
 
 /// Input alamat sesuai repeater di CustomerResource
+/// >>> DITAMBAH field *name agar dashboard bisa render lengkap
 class AddressInput {
+  // KODE (wajib)
   final String provinsiCode;
   final String kotaKabCode;
   final String kecamatanCode;
   final String kelurahanCode;
+
+  // OPSIONAL
   final String? kodePos;
   final String detailAlamat;
+
+  // >>> NEW: NAMA wilayah (akan ikut dikirim)
+  final String? provinsiName;
+  final String? kotaKabName;
+  final String? kecamatanName;
+  final String? kelurahanName;
 
   AddressInput({
     required this.provinsiCode,
@@ -133,6 +155,10 @@ class AddressInput {
     required this.kelurahanCode,
     required this.detailAlamat,
     this.kodePos,
+    this.provinsiName,
+    this.kotaKabName,
+    this.kecamatanName,
+    this.kelurahanName,
   });
 
   Map<String, dynamic> toMap() => {
@@ -142,6 +168,10 @@ class AddressInput {
         'kelurahan_code': kelurahanCode,
         if (kodePos != null) 'kode_pos': kodePos,
         'detail_alamat': detailAlamat,
+        if (provinsiName != null) 'provinsi_name': provinsiName,
+        if (kotaKabName != null) 'kota_kab_name': kotaKabName,
+        if (kecamatanName != null) 'kecamatan_name': kecamatanName,
+        if (kelurahanName != null) 'kelurahan_name': kelurahanName,
       };
 }
 
@@ -149,15 +179,13 @@ class AddressInput {
 class OrderTotals {
   final int total; // jumlah semua subtotal
   final int totalAfterDiscount; // setelah diskon (jika aktif)
-
   const OrderTotals({required this.total, required this.totalAfterDiscount});
 }
 
 class ApiService {
-  static const String baseUrl = 'http://localhost/api'; // jangan diubah
+  static const String baseUrl = 'http://localhost/api';
 
   // ---------- Helpers umum ----------
-
   static int? _extractCategoryId(Map<String, dynamic> json) {
     if (json['customer_category'] is Map) {
       return int.tryParse('${json['customer_category']['id']}');
@@ -167,47 +195,61 @@ class ApiService {
     );
   }
 
+  /// Normalisasi alamat menjadi string manusiawi untuk semua bentuk payload
   static String formatAddress(dynamic json) {
-    // cek alamat_detail
+    // Bentuk object dengan key "alamat_detail"
     if (json is Map &&
         json['alamat_detail'] is List &&
         (json['alamat_detail'] as List).isNotEmpty) {
       final addr = json['alamat_detail'][0];
       if (addr is Map) {
         final detail = addr['detail_alamat']?.toString() ?? '';
-        final kel = addr['kelurahan']?['name']?.toString() ?? '';
-        final kec = addr['kecamatan']?['name']?.toString() ?? '';
-        final kota = addr['kota_kab']?['name']?.toString() ?? '';
-        final prov = addr['provinsi']?['name']?.toString() ?? '';
+        final kel = addr['kelurahan']?['name']?.toString() ??
+            addr['kelurahan_name']?.toString() ??
+            '';
+        final kec = addr['kecamatan']?['name']?.toString() ??
+            addr['kecamatan_name']?.toString() ??
+            '';
+        final kota = addr['kota_kab']?['name']?.toString() ??
+            addr['kota_kab_name']?.toString() ??
+            '';
+        final prov = addr['provinsi']?['name']?.toString() ??
+            addr['provinsi_name']?.toString() ??
+            '';
         final kodePos = addr['kode_pos']?.toString() ?? '';
-
         final parts = [detail, kel, kec, kota, prov, kodePos]
             .where((e) => e.trim().isNotEmpty && e.toLowerCase() != 'null')
             .toList();
-
         return parts.isEmpty ? '-' : parts.join(', ');
       }
     }
 
-    // fallback cek langsung "address"
+    // Fallback langsung "address" array standar
     if (json is List && json.isNotEmpty) {
       final addr = json[0];
       if (addr is Map) {
         final detail = addr['detail_alamat']?.toString() ?? '';
-        final kel = addr['kelurahan']?['name']?.toString() ?? '';
-        final kec = addr['kecamatan']?['name']?.toString() ?? '';
-        final kota = addr['kota_kab']?['name']?.toString() ?? '';
-        final prov = addr['provinsi']?['name']?.toString() ?? '';
+        final kel = addr['kelurahan']?['name']?.toString() ??
+            addr['kelurahan_name']?.toString() ??
+            '';
+        final kec = addr['kecamatan']?['name']?.toString() ??
+            addr['kecamatan_name']?.toString() ??
+            '';
+        final kota = addr['kota_kab']?['name']?.toString() ??
+            addr['kota_kab_name']?.toString() ??
+            '';
+        final prov = addr['provinsi']?['name']?.toString() ??
+            addr['provinsi_name']?.toString() ??
+            '';
         final kodePos = addr['kode_pos']?.toString() ?? '';
-
         final parts = [detail, kel, kec, kota, prov, kodePos]
             .where((e) => e.trim().isNotEmpty && e.toLowerCase() != 'null')
             .toList();
-
         return parts.isEmpty ? '-' : parts.join(', ');
       }
     }
 
+    // String langsung
     if (json is String && json.trim().isNotEmpty) {
       return json;
     }
@@ -304,7 +346,6 @@ class ApiService {
             .toList();
       }
 
-      // case {"customers": [...]}
       final cust = decoded['customers'];
       if (cust is List) {
         return cust
@@ -317,6 +358,41 @@ class ApiService {
   }
 
   // ---------- AUTH ----------
+  static Future<void> _saveUserFromLoginPayload(dynamic body) async {
+    try {
+      if (body is! Map) return;
+      final map = Map<String, dynamic>.from(body);
+      final u = (map['user'] is Map)
+          ? Map<String, dynamic>.from(map['user'])
+          : (map['data'] is Map)
+              ? Map<String, dynamic>.from(map['data'])
+              : null;
+      if (u == null) return;
+      final prefs = await SharedPreferences.getInstance();
+      if (u['email'] != null) {
+        await prefs.setString('user_email', u['email'].toString());
+      }
+      if (u['name'] != null) {
+        await prefs.setString('user_name', u['name'].toString());
+      }
+    } catch (_) {}
+  }
+
+  static Map<String, dynamic>? _decodeJwt(String token) {
+    try {
+      final parts = token.split('.');
+      if (parts.length != 3) return null;
+      String normalized = parts[1];
+      while (normalized.length % 4 != 0) {
+        normalized += '=';
+      }
+      final payload = utf8.decode(base64Url.decode(normalized));
+      final map = jsonDecode(payload);
+      if (map is Map<String, dynamic>) return map;
+    } catch (_) {}
+    return null;
+  }
+
   static Future<bool> login(String email, String password) async {
     try {
       final url = _buildUri('auth/login');
@@ -331,6 +407,12 @@ class ApiService {
           body['token'] != null) {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString('token', body['token']);
+        await _saveUserFromLoginPayload(body);
+        final jwt = _decodeJwt(body['token'].toString());
+        final jwtEmail = jwt?['email'] ?? jwt?['sub'];
+        if (jwtEmail is String && jwtEmail.isNotEmpty) {
+          await prefs.setString('user_email', jwtEmail);
+        }
         return true;
       }
       return false;
@@ -342,6 +424,128 @@ class ApiService {
   static Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('token');
+    await prefs.remove('user_email');
+    await prefs.remove('user_name');
+  }
+
+  static Future<Map<String, dynamic>?> fetchAuthMe() async {
+    final prefs = await SharedPreferences.getInstance();
+    final cachedEmail = prefs.getString('user_email');
+    final cachedName = prefs.getString('user_name');
+    if (cachedEmail != null && cachedEmail.isNotEmpty) {
+      return {'email': cachedEmail, if (cachedName != null) 'name': cachedName};
+    }
+
+    final headers = await _authorizedHeaders();
+    for (final path in [
+      'auth/me',
+      'me',
+      'user',
+      'auth/user',
+      'users/me',
+      'profile',
+    ]) {
+      try {
+        final uri = _buildUri(path);
+        final res = await http.get(uri, headers: headers);
+        if (res.statusCode != 200) continue;
+        final decoded = _safeDecode(res.body);
+        final data = (decoded is Map && decoded['data'] is Map)
+            ? Map<String, dynamic>.from(decoded['data'])
+            : (decoded is Map ? Map<String, dynamic>.from(decoded) : null);
+        if (data != null && (data['email'] ?? data['user']?['email']) != null) {
+          final email = (data['email'] ?? data['user']?['email']).toString();
+          await prefs.setString('user_email', email);
+          if (data['name'] != null) {
+            await prefs.setString('user_name', data['name'].toString());
+          }
+          return data;
+        }
+      } catch (_) {}
+    }
+
+    final token = prefs.getString('token');
+    if (token != null && token.isNotEmpty) {
+      final jwt = _decodeJwt(token);
+      final email = jwt?['email'] ?? jwt?['sub'];
+      if (email is String && email.isNotEmpty) {
+        await prefs.setString('user_email', email);
+        return {'email': email};
+      }
+    }
+
+    return null;
+  }
+
+  /// Ambil profil employee untuk user yang login (dengan filter email).
+  static Future<EmployeeProfile?> fetchMyEmployeeProfile() async {
+    String? email;
+    final me = await fetchAuthMe();
+    email = (me?['email'] ?? me?['user']?['email'] ?? me?['data']?['email'])
+        ?.toString();
+
+    final headers = await _authorizedHeaders();
+
+    if (email != null && email.isNotEmpty) {
+      final uri = _buildUri('employees', query: {
+        'per_page': '1',
+        'filter[email]': email,
+      });
+      final res = await http.get(uri, headers: headers);
+      if (res.statusCode == 200) {
+        final decoded = _safeDecode(res.body);
+        final list = _extractList(decoded);
+        if (list.isNotEmpty) {
+          final map = Map<String, dynamic>.from(list.first);
+          map['photo'] = _absoluteUrl(map['photo']?.toString());
+          return EmployeeProfile.fromJson(map);
+        }
+      }
+    }
+
+    try {
+      final uri = _buildUri('employees', query: {'per_page': '1'});
+      final res = await http.get(uri, headers: headers);
+      if (res.statusCode == 200) {
+        final decoded = _safeDecode(res.body);
+        final list = _extractList(decoded);
+        if (list.isNotEmpty) {
+          final map = Map<String, dynamic>.from(list.first);
+          map['photo'] = _absoluteUrl(map['photo']?.toString());
+          return EmployeeProfile.fromJson(map);
+        }
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Ambil URL gambar banner dari backend (maks 4)
+  static Future<List<String>> fetchBannerImages() async {
+    final headers = await _authorizedHeaders();
+    for (final path in ['banners', 'banner']) {
+      try {
+        final uri = _buildUri(path, query: {'per_page': '50'});
+        final res = await http.get(uri, headers: headers);
+        if (res.statusCode != 200) continue;
+
+        final decoded = _safeDecode(res.body);
+        final list = _extractList(decoded);
+
+        final urls = <String>[];
+        for (final raw in list) {
+          if (raw is Map) {
+            for (final key in ['image_1', 'image_2', 'image_3', 'image_4']) {
+              final v = (raw[key] ?? '').toString().trim();
+              if (v.isEmpty || v.toLowerCase() == 'null') continue;
+              urls.add(_absoluteUrl(v));
+            }
+          }
+        }
+        final uniq = urls.where((e) => e.isNotEmpty).toSet().toList();
+        if (uniq.isNotEmpty) return uniq.take(4).toList();
+      } catch (_) {}
+    }
+    return <String>[];
   }
 
   // ---------- DROPDOWN ----------
@@ -396,10 +600,13 @@ class ApiService {
   static Future<List<OptionItem>> fetchDepartments() =>
       ApiService()._fetchOptionsTryPaths(['departments']);
 
+  // ======================= DROPDOWN =======================
+
+  // employees
   static Future<List<OptionItem>> fetchEmployees(
       {required int departmentId}) async {
     return ApiService()._fetchOptionsTryPaths(
-      ['customers'],
+      ['orders'],
       query: {
         'type': 'employees',
         'department_id': '$departmentId',
@@ -408,36 +615,56 @@ class ApiService {
     );
   }
 
-  /// Customer Categories
-  // ApiService.dart
-static Future<List<OptionItem>> fetchCustomerCategories({int? employeeId}) {
-  return ApiService()._fetchOptionsTryPaths(
-    ['customer-categories'],
-    query: employeeId != null ? {'employee_id': '$employeeId'} : null,
-    filterActive: true,
-  );
-}
+  // categories (by employee optional)
+  static Future<List<OptionItem>> fetchCustomerCategories({int? employeeId}) {
+    final q = <String, String>{'type': 'customer-categories'};
+    if (employeeId != null) q['employee_id'] = '$employeeId';
+    return ApiService()._fetchOptionsTryPaths(
+      ['orders'],
+      query: q,
+      filterActive: true,
+    );
+  }
 
+  // programs (all)
+  static Future<List<OptionItem>> fetchCustomerPrograms(
+      {int? employeeId, int? categoryId}) {
+    return ApiService()._fetchOptionsTryPaths(
+      ['orders'],
+      query: {'type': 'customer-programs'},
+      filterActive: true,
+    );
+  }
 
+  // all categories (fallback)
+  static Future<List<OptionItem>> fetchCustomerCategoriesAll() {
+    return ApiService()._fetchOptionsTryPaths(
+      ['customer-categories'],
+      filterActive: true,
+    );
+  }
 
+  // customers by dept+emp
+  static Future<List<OptionItem>> fetchCustomersByDeptEmp({
+    required int departmentId,
+    required int employeeId,
+  }) async {
+    final headers = await _authorizedHeaders();
+    final uri = _buildUri('orders', query: {
+      'type': 'customers',
+      'department_id': '$departmentId',
+      'employee_id': '$employeeId',
+      'per_page': '1000',
+    });
 
-  // ApiService.dart
-static Future<List<OptionItem>> fetchCustomerPrograms({int? employeeId, int? categoryId}) {
-  final query = <String, String>{};
+    final res = await http.get(uri, headers: headers);
+    if (res.statusCode != 200) return [];
 
-  if (employeeId != null) query['employee_id'] = '$employeeId';
-  if (categoryId != null) query['customer_category_id'] = '$categoryId';
+    final decoded = _safeDecode(res.body);
+    final list = _extractList(decoded);
+    return list.map<OptionItem>((m) => _parseCustomer(m)).toList();
+  }
 
-  return ApiService()._fetchOptionsTryPaths(
-    ['customer-programs'],
-    query: query.isEmpty ? null : query,
-    filterActive: true,
-  );
-}
-
-  
-
-  // Customer Programs by Category
   static Future<List<OptionItem>> fetchCustomerProgramsByCategory(
       int categoryId) async {
     return ApiService()._fetchOptionsTryPaths(
@@ -445,7 +672,6 @@ static Future<List<OptionItem>> fetchCustomerPrograms({int? employeeId, int? cat
       query: {'customer_category_id': '$categoryId'},
       filterActive: true,
     );
-
   }
 
   static Future<List<OptionItem>> fetchCustomersByCategory(
@@ -463,14 +689,10 @@ static Future<List<OptionItem>> fetchCustomerPrograms({int? employeeId, int? cat
     final decoded = _safeDecode(res.body);
     final list = _extractList(decoded);
 
-    final customers =
-        list.map<OptionItem>((m) => _parseCustomer(m)).toList();
+    final customers = list.map<OptionItem>((m) => _parseCustomer(m)).toList();
 
     return customers.where((c) => c.categoryId == categoryId).toList();
   }
-
-
-
 
   static Future<List<OptionItem>> fetchCustomersFiltered({
     required int departmentId,
@@ -494,70 +716,81 @@ static Future<List<OptionItem>> fetchCustomerPrograms({int? employeeId, int? cat
     return list.map<OptionItem>((m) => _parseCustomer(m)).toList();
   }
 
-// ApiService.dart
-static Future<Customer> fetchCustomerDetail(int id) async {
-  final headers = await _authorizedHeaders();
-  final uri = _buildUri('customers/$id');
-  final res = await http.get(uri, headers: headers);
-
-  if (res.statusCode != 200) {
-    throw Exception('Failed to load customer detail: ${res.statusCode}');
-  }
-
-  final decoded = _safeDecode(res.body);
-  Map<String, dynamic>? data;
-
-  if (decoded is Map) {
-    if (decoded['data'] is Map) {
-      data = Map<String, dynamic>.from(decoded['data']);
-    } else {
-      data = Map<String, dynamic>.from(decoded);
+  // ---- Detail customer (model) ----
+  static Future<Customer> fetchCustomerDetail(int id) async {
+    final headers = await _authorizedHeaders();
+    final uri = _buildUri('customers/$id');
+    final res = await http.get(uri, headers: headers);
+    if (res.statusCode != 200) {
+      throw Exception('Failed to load customer detail: ${res.statusCode}');
     }
+    final decoded = _safeDecode(res.body);
+    Map<String, dynamic>? data;
+
+    if (decoded is Map) {
+      if (decoded['data'] is Map) {
+        data = Map<String, dynamic>.from(decoded['data']);
+      } else {
+        data = Map<String, dynamic>.from(decoded);
+      }
+    }
+    if (data == null) throw Exception('Customer detail not found');
+    return Customer.fromJson(data);
   }
 
-  if (data == null) throw Exception('Customer detail not found');
+  // ---- Detail customer RAW map (untuk formatAddress) ----
+  static Future<Map<String, dynamic>> fetchCustomerDetailRaw(int id) async {
+    final headers = await _authorizedHeaders();
+    final uri = _buildUri('customers/$id');
+    final res = await http.get(uri, headers: headers);
+    if (res.statusCode != 200) {
+      throw Exception('Failed to load customer detail: ${res.statusCode}');
+    }
+    final decoded = _safeDecode(res.body);
+    if (decoded is Map && decoded['data'] is Map) {
+      return Map<String, dynamic>.from(decoded['data']);
+    }
+    if (decoded is Map) {
+      return Map<String, dynamic>.from(decoded);
+    }
+    return <String, dynamic>{};
+  }
 
+  static Future<Map<String, dynamic>> fetchCustomerDetailMap(int id) =>
+      fetchCustomerDetailRaw(id);
 
-  return Customer.fromJson(data);
-}
+  // ---- Produk dependensi ----
+  static Future<List<OptionItem>> fetchCategoriesByBrand(int brandId) {
+    return ApiService()._fetchOptionsTryPaths(
+      ['orders'],
+      query: {'type': 'categories-by-brand', 'brand_id': '$brandId'},
+      filterActive: true,
+    );
+  }
 
-// Ambil kategori produk berdasarkan brand
-static Future<List<OptionItem>> fetchCategoriesByBrand(int brandId) {
-  return ApiService()._fetchOptionsTryPaths(
-    ['orders'], // endpoint orders dipakai utk relasi dinamis
-    query: {
-      'type': 'categories-by-brand',
-      'brand_id': '$brandId',
-    },
-    filterActive: true,
-  );
-}
+  static Future<List<OptionItem>> fetchProductsByBrandCategory(
+      int brandId, int categoryId) {
+    return ApiService()._fetchOptionsTryPaths(
+      ['orders'],
+      query: {
+        'type': 'products-by-brand-category',
+        'brand_id': '$brandId',
+        'category_id': '$categoryId',
+      },
+      filterActive: true,
+    );
+  }
 
-// Ambil produk berdasarkan brand + kategori
-static Future<List<OptionItem>> fetchProductsByBrandCategory(int brandId, int categoryId) {
-  return ApiService()._fetchOptionsTryPaths(
-    ['orders'],
-    query: {
-      'type': 'products-by-brand-category',
-      'brand_id': '$brandId',
-      'category_id': '$categoryId',
-    },
-    filterActive: true,
-  );
-}
+  static Future<List<OptionItem>> fetchColorsByProductFiltered(
+      int productId) {
+    return ApiService()._fetchOptionsTryPaths(
+      ['orders'],
+      query: {'type': 'colors-by-product', 'product_id': '$productId'},
+      filterActive: false,
+    );
+  }
 
-
-static Future<List<OptionItem>> fetchColorsByProductFiltered(int productId) {
-  return ApiService()._fetchOptionsTryPaths(
-    ['orders'],
-    query: {'type':'colors-by-product','product_id':'$productId'},
-    filterActive: false,
-  );
-}
-
-
-
-  /// Ambil semua customer aktif + approved (tanpa filter kategori)
+  /// Ambil semua customer aktif + approved
   static Future<List<OptionItem>> fetchCustomersDropdown() async {
     final headers = await _authorizedHeaders();
     final uri = _buildUri('customers', query: {'per_page': '1000'});
@@ -587,67 +820,58 @@ static Future<List<OptionItem>> fetchColorsByProductFiltered(int productId) {
     return customers;
   }
 
-  // Categories
+  // Categories / Brands / Products
   static Future<List<OptionItem>> fetchProductCategories() =>
       ApiService()._fetchOptionsTryPaths(['categories'], filterActive: true);
-
-  // Brands
   static Future<List<OptionItem>> fetchBrands() =>
       ApiService()._fetchOptionsTryPaths(['brands'], filterActive: true);
-
-  // Products
   static Future<List<OptionItem>> fetchProducts() =>
       ApiService()._fetchOptionsTryPaths(['products'], filterActive: true);
 
   // === Wilayah (Indonesia) ===
-static Future<List<OptionItem>> fetchProvinces() =>
-    ApiService()._fetchOptionsTryPaths(
-      ['customers'],
-      query: {'type': 'provinces'},
-      filterActive: false,
-    );
-
-static Future<List<OptionItem>> fetchCities(String provinceCode) =>
-    ApiService()._fetchOptionsTryPaths(
-      ['customers'],
-      query: {'type': 'cities', 'province_code': provinceCode},
-      filterActive: false,
-    );
-
-static Future<List<OptionItem>> fetchDistricts(String cityCode) =>
-    ApiService()._fetchOptionsTryPaths(
-      ['customers'],
-      query: {'type': 'districts', 'city_code': cityCode},
-      filterActive: false,
-    );
-
-static Future<List<OptionItem>> fetchVillages(String districtCode) =>
-    ApiService()._fetchOptionsTryPaths(
-      ['customers'],
-      query: {'type': 'villages', 'district_code': districtCode},
-      filterActive: false,
-    );
-
-static Future<String?> fetchPostalCodeByVillage(String villageCode) async {
-  final headers = await _authorizedHeaders();
-  final uri = _buildUri('customers', query: {
-    'type': 'postal_code',
-    'village_code': villageCode,
-  });
-  try {
-    final res = await http.get(uri, headers: headers);
-    if (res.statusCode == 200) {
-      final decoded = _safeDecode(res.body);
-      if (decoded is Map && decoded['postal_code'] != null) {
-        return decoded['postal_code'].toString();
+  static Future<List<OptionItem>> fetchProvinces() =>
+      ApiService()._fetchOptionsTryPaths(
+        ['customers'],
+        query: {'type': 'provinces'},
+        filterActive: false,
+      );
+  static Future<List<OptionItem>> fetchCities(String provinceCode) =>
+      ApiService()._fetchOptionsTryPaths(
+        ['customers'],
+        query: {'type': 'cities', 'province_code': provinceCode},
+        filterActive: false,
+      );
+  static Future<List<OptionItem>> fetchDistricts(String cityCode) =>
+      ApiService()._fetchOptionsTryPaths(
+        ['customers'],
+        query: {'type': 'districts', 'city_code': cityCode},
+        filterActive: false,
+      );
+  static Future<List<OptionItem>> fetchVillages(String districtCode) =>
+      ApiService()._fetchOptionsTryPaths(
+        ['customers'],
+        query: {'type': 'villages', 'district_code': districtCode},
+        filterActive: false,
+      );
+  static Future<String?> fetchPostalCodeByVillage(String villageCode) async {
+    final headers = await _authorizedHeaders();
+    final uri = _buildUri('customers', query: {
+      'type': 'postal_code',
+      'village_code': villageCode,
+    });
+    try {
+      final res = await http.get(uri, headers: headers);
+      if (res.statusCode == 200) {
+        final decoded = _safeDecode(res.body);
+        if (decoded is Map && decoded['postal_code'] != null) {
+          return decoded['postal_code'].toString();
+        }
       }
-    }
-  } catch (_) {}
-  return null;
-}
+    } catch (_) {}
+    return null;
+  }
 
-
-  // Colors untuk 1 produk
+  // Colors untuk 1 produk (fallback ke berbagai bentuk)
   static Future<List<OptionItem>> fetchColorsByProduct(int productId) async {
     final headers = await _authorizedHeaders();
 
@@ -668,7 +892,6 @@ static Future<String?> fetchPostalCodeByVillage(String villageCode) async {
                 ? Map<String, dynamic>.from(decoded)
                 : <String, dynamic>{});
 
-        // kandidat lokasi warna
         final dynamic raw = data['colors'] ??
             data['warna'] ??
             (data['attributes'] is Map
@@ -680,7 +903,6 @@ static Future<String?> fetchPostalCodeByVillage(String villageCode) async {
 
         if (raw is List) {
           if (raw.isNotEmpty && raw.first is! Map) {
-            // ["3000K","4000K"]
             final list = raw
                 .map((e) => e.toString())
                 .where((s) => s.trim().isNotEmpty)
@@ -690,12 +912,11 @@ static Future<String?> fetchPostalCodeByVillage(String villageCode) async {
                 OptionItem(id: i + 1, name: list[i]),
             ];
           } else {
-            // [{id,name}] atau object lain yg punya name
             out = raw
                 .whereType<Map>()
                 .map((m) {
-                  final name = (m['name'] ?? m['nama'] ?? m['label'] ?? '')
-                      .toString();
+                  final name =
+                      (m['name'] ?? m['nama'] ?? m['label'] ?? '').toString();
                   final id = int.tryParse('${m['id'] ?? 0}') ?? 0;
                   return id > 0
                       ? OptionItem(id: id, name: name)
@@ -705,7 +926,6 @@ static Future<String?> fetchPostalCodeByVillage(String villageCode) async {
                 .toList();
           }
         } else if (raw is String && raw.trim().isNotEmpty) {
-          // "3000K,4000K"
           final parts = raw
               .split(',')
               .map((e) => e.trim())
@@ -730,7 +950,7 @@ static Future<String?> fetchPostalCodeByVillage(String villageCode) async {
     return <OptionItem>[];
   }
 
-  // Harga produk (INT Rupiah). Ambil dari beberapa kandidat field.
+  // Harga produk
   static Future<int> fetchProductPrice(int productId) async {
     final headers = await _authorizedHeaders();
     final tries = <Uri>[
@@ -766,8 +986,8 @@ static Future<String?> fetchPostalCodeByVillage(String villageCode) async {
           if (c == null) continue;
           if (c is int) return c;
           if (c is double) return c.round();
-          final parsed = int.tryParse(
-              c.toString().replaceAll(RegExp(r'[^\d\-]'), ''));
+          final parsed =
+              int.tryParse(c.toString().replaceAll(RegExp(r'[^\d\-]'), ''));
           if (parsed != null) return parsed;
         }
       } catch (_) {}
@@ -792,7 +1012,7 @@ static Future<String?> fetchPostalCodeByVillage(String villageCode) async {
     final url = _buildUri('customers');
     final headers = await _authorizedHeaders();
 
-    var request = http.MultipartRequest('POST', url);
+    final request = http.MultipartRequest('POST', url);
     request.headers.addAll(headers);
 
     request.fields['company_id'] = companyId.toString();
@@ -809,7 +1029,7 @@ static Future<String?> fetchPostalCodeByVillage(String villageCode) async {
       request.fields['gmaps_link'] = gmapsLink;
     }
 
-    // address
+    // ===== Address (kode Wajib) =====
     request.fields['address[0][provinsi_code]'] = address.provinsiCode;
     request.fields['address[0][kota_kab_code]'] = address.kotaKabCode;
     request.fields['address[0][kecamatan_code]'] = address.kecamatanCode;
@@ -818,6 +1038,41 @@ static Future<String?> fetchPostalCodeByVillage(String villageCode) async {
       request.fields['address[0][kode_pos]'] = address.kodePos!;
     }
     request.fields['address[0][detail_alamat]'] = address.detailAlamat;
+
+    // ===== Flat "name" fallback (sering dipakai dashboard) =====
+    if (address.provinsiName != null) {
+      request.fields['address[0][provinsi_name]'] = address.provinsiName!;
+    }
+    if (address.kotaKabName != null) {
+      request.fields['address[0][kota_kab_name]'] = address.kotaKabName!;
+    }
+    if (address.kecamatanName != null) {
+      request.fields['address[0][kecamatan_name]'] = address.kecamatanName!;
+    }
+    if (address.kelurahanName != null) {
+      request.fields['address[0][kelurahan_name]'] = address.kelurahanName!;
+    }
+
+    // ===== Nested object (mirip relasi laravolt) =====
+    request.fields['address[0][provinsi][code]'] = address.provinsiCode;
+    if (address.provinsiName != null) {
+      request.fields['address[0][provinsi][name]'] = address.provinsiName!;
+    }
+
+    request.fields['address[0][kota_kab][code]'] = address.kotaKabCode;
+    if (address.kotaKabName != null) {
+      request.fields['address[0][kota_kab][name]'] = address.kotaKabName!;
+    }
+
+    request.fields['address[0][kecamatan][code]'] = address.kecamatanCode;
+    if (address.kecamatanName != null) {
+      request.fields['address[0][kecamatan][name]'] = address.kecamatanName!;
+    }
+
+    request.fields['address[0][kelurahan][code]'] = address.kelurahanCode;
+    if (address.kelurahanName != null) {
+      request.fields['address[0][kelurahan][name]'] = address.kelurahanName!;
+    }
 
     // upload multi foto
     if (photos != null && photos.isNotEmpty) {
@@ -862,7 +1117,6 @@ static Future<String?> fetchPostalCodeByVillage(String villageCode) async {
   }
 
   // ---------- SALES ORDERS ----------
-  /// Hitung total & totalAfter (diskon) di sisi client.
   static OrderTotals computeTotals({
     required List<Map<String, dynamic>> products,
     required double diskon1,
@@ -886,16 +1140,13 @@ static Future<String?> fetchPostalCodeByVillage(String villageCode) async {
       return OrderTotals(total: total, totalAfterDiscount: total);
     }
 
-    // Hitung diskon bertingkat
     double afterDiskon1 = total * (1.0 - (diskon1 / 100.0));
     double afterDiskon2 = afterDiskon1 * (1.0 - (diskon2 / 100.0));
 
-    final int totalAfter = afterDiskon2.isNaN || afterDiskon2.isInfinite
-        ? total
-        : afterDiskon2.round();
+    final int totalAfter =
+        afterDiskon2.isNaN || afterDiskon2.isInfinite ? total : afterDiskon2.round();
 
     return OrderTotals(total: total, totalAfterDiscount: totalAfter);
-
   }
 
   // CREATE ORDER
@@ -910,23 +1161,22 @@ static Future<String?> fetchPostalCodeByVillage(String villageCode) async {
     required String addressText,
     bool programEnabled = false,
     bool rewardEnabled = false,
-    int programPoint = 0,   
-    int rewardPoint = 0,    
+    int programPoint = 0,
+    int rewardPoint = 0,
     double diskon1 = 0,
     double diskon2 = 0,
     String? penjelasanDiskon1,
     String? penjelasanDiskon2,
     bool diskonsEnabled = false,
     required List<Map<String, dynamic>> products,
-    String paymentMethod = "tempo", // cash/transfer/tempo
-    String statusPembayaran = "belum bayar", // sudah bayar/belum bayar
-    String status = "pending", // pending/processing/completed/cancelled
+    String paymentMethod = "tempo",
+    String statusPembayaran = "belum bayar",
+    String status = "pending",
     List<XFile>? files,
   }) async {
     final url = _buildUri('orders');
     final headers = await _authorizedHeaders();
 
-    // Pastikan kirim juga total agar backend bisa validasi/record (walau backend juga hitung sendiri).
     final totals = computeTotals(
       products: products,
       diskon1: diskon1,
@@ -937,7 +1187,6 @@ static Future<String?> fetchPostalCodeByVillage(String villageCode) async {
     var request = http.MultipartRequest('POST', url);
     request.headers.addAll(headers);
 
-    // ===== Field utama =====
     request.fields['company_id'] = companyId.toString();
     request.fields['department_id'] = departmentId.toString();
     request.fields['employee_id'] = employeeId.toString();
@@ -949,11 +1198,10 @@ static Future<String?> fetchPostalCodeByVillage(String villageCode) async {
     request.fields['phone'] = phone;
     request.fields['address'] = addressText;
 
-    // Diskon & program
     request.fields['program_enabled'] = programEnabled ? '1' : '0';
     request.fields['reward_enabled'] = rewardEnabled ? '1' : '0';
-    request.fields['jumlah_program']  = programPoint.toString();
-  request.fields['reward_point']    = rewardPoint.toString();
+    request.fields['jumlah_program'] = programPoint.toString();
+    request.fields['reward_point'] = rewardPoint.toString();
     request.fields['diskon_1'] = diskon1.toString();
     request.fields['diskon_2'] = diskon2.toString();
     request.fields['diskons_enabled'] = diskonsEnabled ? '1' : '0';
@@ -964,30 +1212,29 @@ static Future<String?> fetchPostalCodeByVillage(String villageCode) async {
       request.fields['penjelasan_diskon_2'] = penjelasanDiskon2;
     }
 
-    // Payment & status
     request.fields['payment_method'] = paymentMethod;
     request.fields['status_pembayaran'] = statusPembayaran;
     request.fields['status'] = status;
-
-    // Totals
     request.fields['total_harga'] = totals.total.toString();
     request.fields['total_harga_after_tax'] =
         totals.totalAfterDiscount.toString();
 
-    // ===== Produk list (array field) =====
-    // backend CreateOrderRequest mengharapkan products.*.produk_id / warna_id / quantity / price
     for (int i = 0; i < products.length; i++) {
       final p = products[i];
-      request.fields['products[$i][produk_id]'] = '${p['produk_id'] ?? ''}';
-      if (p['warna_id'] != null) {
-        request.fields['products[$i][warna_id]'] = '${p['warna_id']}';
+
+      final produkId = (p['produk_id'] ?? '').toString();
+      final warnaId  = (p['warna_id'] ?? '').toString();
+      final qty      = (p['quantity'] ?? 0).toString();
+      final price    = (p['price'] ?? 0).toString();
+
+      request.fields['products[$i][produk_id]'] = produkId;
+      if (warnaId.isNotEmpty) {
+        request.fields['products[$i][warna_id]'] = warnaId;
       }
-      request.fields['products[$i][quantity]'] =
-          '${p['quantity'] ?? 0}';
-      request.fields['products[$i][price]'] = '${p['price'] ?? 0}';
+      request.fields['products[$i][quantity]'] = qty;
+      request.fields['products[$i][price]']    = price;
     }
 
-    // ===== Upload file (optional) =====
     if (files != null && files.isNotEmpty) {
       for (final file in files) {
         if (kIsWeb) {
@@ -1052,8 +1299,6 @@ static Future<String?> fetchPostalCodeByVillage(String villageCode) async {
     return <OrderRow>[];
   }
 
-
-
   // FETCH DETAIL ORDER
   static Future<OrderRow> fetchOrderRowDetail(int id) async {
     final headers = await _authorizedHeaders();
@@ -1080,6 +1325,8 @@ static Future<String?> fetchPostalCodeByVillage(String villageCode) async {
   }
 
   // ---------- RETURNS ----------
+// ---------- RETURNS ----------
+  /// POST return pakai JSON (bukan multipart) agar 'products' & 'address' terbaca sebagai array
   static Future<bool> createReturn({
     required int companyId,
     required int departmentId,
@@ -1087,64 +1334,39 @@ static Future<String?> fetchPostalCodeByVillage(String villageCode) async {
     required int customerId,
     required int categoryId,
     required String phone,
-    required AddressInput address,
+    required List<Map<String, dynamic>> address,  // array seperti garansi
+    required List<Map<String, dynamic>> products, // array
     required int amount,
     required String reason,
     String? note,
-    required List<Map<String, dynamic>> products,
-    List<XFile>? photos,
+    String status = 'pending',
+    String? imagePath, // opsional; base64 string
   }) async {
-    final url = _buildUri('product-returns');
-    final headers = await _authorizedHeaders();
+    final url = _buildUri('product-returns'); // endpoint return
+    final headers = await _authorizedHeaders(jsonContent: true);
 
-    final req = http.MultipartRequest('POST', url);
-    req.headers.addAll(headers);
+    final payload = <String, dynamic>{
+      'company_id': companyId,
+      'department_id': departmentId,
+      'employee_id': employeeId,
+      'customer_id': customerId,
+      'customer_categories_id': categoryId,
+      'phone': phone,
+      'address': address,     // array
+      'products': products,   // array
+      'amount': amount,
+      'reason': reason,
+      'status': status,
+      if (note != null && note.isNotEmpty) 'note': note,
+      if (imagePath != null && imagePath.isNotEmpty) 'image': imagePath,
+    };
 
-    // ===== Field utama =====
-    req.fields['company_id'] = companyId.toString();
-    req.fields['department_id'] = departmentId.toString();
-    req.fields['employee_id'] = employeeId.toString();
-    req.fields['customer_id'] = customerId.toString();
-    req.fields['customer_categories_id'] = categoryId.toString();
-    req.fields['phone'] = phone;
-    req.fields['amount'] = amount.toString();
-    req.fields['reason'] = reason;
-    if (note != null && note.isNotEmpty) req.fields['note'] = note;
-
-    // ===== Address array =====
-    req.fields['address[0][provinsi_code]'] = address.provinsiCode;
-    req.fields['address[0][kota_kab_code]'] = address.kotaKabCode;
-    req.fields['address[0][kecamatan_code]'] = address.kecamatanCode;
-    req.fields['address[0][kelurahan_code]'] = address.kelurahanCode;
-    if (address.kodePos != null && address.kodePos!.isNotEmpty) {
-      req.fields['address[0][kode_pos]'] = address.kodePos!;
-    }
-    req.fields['address[0][detail_alamat]'] = address.detailAlamat;
-
-    // ===== Products sebagai JSON string =====
-    req.fields['products'] = jsonEncode(products);
-
-    // ===== Upload file: 'image[]' =====
-    if (photos != null && photos.isNotEmpty) {
-      for (final p in photos) {
-        if (kIsWeb) {
-          final bytes = await p.readAsBytes();
-          req.files.add(http.MultipartFile.fromBytes('image[]', bytes,
-              filename: p.name));
-        } else {
-          req.files.add(await http.MultipartFile.fromPath('image[]', p.path));
-        }
-      }
-    }
-
-    final streamed = await req.send();
-    final res = await http.Response.fromStream(streamed);
-
+    final res = await http.post(url, headers: headers, body: jsonEncode(payload));
     // ignore: avoid_print
     print('DEBUG createReturn => ${res.statusCode} ${res.body}');
-
     return res.statusCode == 200 || res.statusCode == 201;
   }
+
 
   static Future<List<OptionItem>> fetchColors() async => <OptionItem>[];
 
@@ -1172,16 +1394,13 @@ static Future<String?> fetchPostalCodeByVillage(String villageCode) async {
                 map['invoice_pdf_url'] ??
                 '')
             .toString());
-        map['image'] = _absoluteUrl(
-            (map['image'] ?? map['image_url'] ?? '').toString());
+        map['image'] =
+            _absoluteUrl((map['image'] ?? map['image_url'] ?? '').toString());
         return ReturnRow.fromJson(map);
       }).toList();
     }
     return <ReturnRow>[];
   }
-
- 
-
 
   static Future<ReturnRow> fetchReturnRowDetail(int id) async {
     final headers = await _authorizedHeaders();
@@ -1207,6 +1426,50 @@ static Future<String?> fetchPostalCodeByVillage(String villageCode) async {
   }
 
   // ---------- WARRANTIES ----------
+  /// POST garansi pakai JSON (bukan multipart) agar 'products' & 'address' terbaca sebagai array
+  static Future<bool> createWarranty({
+    required int companyId,
+    required int departmentId,
+    required int employeeId,
+    required int customerId,
+    required int categoryId,
+    required String phone,
+    required List<Map<String, dynamic>> address,
+    required List<Map<String, dynamic>> products,
+    required String purchaseDate, // YYYY-MM-DD
+    required String claimDate, // YYYY-MM-DD
+    String? reason,
+    String? note,
+    String status = 'pending',
+    String? imagePath, // opsional; string path
+  }) async {
+    final url = _buildUri('garansis'); // sesuaikan jika rute berbeda
+    final headers = await _authorizedHeaders(jsonContent: true);
+
+    final payload = <String, dynamic>{
+      'company_id': companyId,
+      'department_id': departmentId,
+      'employee_id': employeeId,
+      'customer_id': customerId,
+      'customer_categories_id': categoryId,
+      'phone': phone,
+      'address': address, // array
+      'products': products, // array
+      'purchase_date': purchaseDate,
+      'claim_date': claimDate,
+      'status': status,
+      if (reason != null && reason.isNotEmpty) 'reason': reason,
+      if (note != null && note.isNotEmpty) 'note': note,
+      if (imagePath != null && imagePath.isNotEmpty) 'image': imagePath,
+    };
+
+    final res =
+        await http.post(url, headers: headers, body: jsonEncode(payload));
+    // ignore: avoid_print
+    print('DEBUG createWarranty => ${res.statusCode} ${res.body}');
+    return res.statusCode == 200 || res.statusCode == 201;
+  }
+
   static Future<List<GaransiRow>> fetchWarrantyRows(
       {int page = 1, int perPage = 20, String? q, String? status}) async {
     final headers = await _authorizedHeaders();
@@ -1283,7 +1546,9 @@ static Future<String?> fetchPostalCodeByVillage(String villageCode) async {
 
   static String _absoluteUrl(String? maybe) {
     if (maybe == null || maybe.isEmpty) return '';
-    if (maybe.startsWith('http://') || maybe.startsWith('https://')) return maybe;
+    if (maybe.startsWith('http://') || maybe.startsWith('https://')) {
+      return maybe;
+    }
     final path = maybe.startsWith('/') ? maybe : '/$maybe';
     return '$_origin$path';
   }
