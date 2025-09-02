@@ -110,31 +110,40 @@ class Garansi extends Model
 
    // ================= PRODUK =================
     public function productsWithDetails(): array
-    {
-        $raw = $this->products;
-        if (is_string($raw)) $raw = json_decode($raw, true) ?: [];
-        elseif (!is_array($raw)) $raw = [];
+{
+    $raw = $this->products ?? [];
 
-        return array_map(function ($item) {
-            $product = Product::find($item['produk_id'] ?? null);
-            return [
-                'brand_name'    => $product?->brand?->name ?? '(Brand hilang)',
-                'category_name' => $product?->category?->name ?? '(Kategori hilang)',
-                'product_name'  => $product?->name ?? '(Produk hilang)',
-                'color'         => $item['warna_id'] ?? '-',
-                'quantity'      => $item['quantity'] ?? 0,
-            ];
-        }, $raw);
-    }
+    return array_map(function ($item) {
+        $product = Product::find($item['produk_id'] ?? null);
+
+        // Ambil list warna dari product (kolom json 'colors')
+        $colors = $product?->colors ?? []; 
+        $colorName = isset($colors[$item['warna_id']]) 
+            ? $colors[$item['warna_id']] 
+            : '-';
+
+        return [
+            'brand_name'    => $product?->brand?->name ?? '(Brand hilang)',
+            'category_name' => $product?->category?->name ?? '(Kategori hilang)',
+            'product_name'  => $product?->name ?? '(Produk hilang)',
+            'color'         => $colorName,
+            'quantity'      => $item['quantity'] ?? 0,
+        ];
+    }, $raw);
+}
+
 
     public function getProductsDetailsAttribute(): string
-    {
-        $items = $this->productsWithDetails();
-        if (empty($items)) return '';
-        return collect($items)->map(fn ($i) =>
-            "{$i['brand_name']} – {$i['category_name']} – {$i['product_name']} – {$i['color']} – Qty: {$i['quantity']}"
-        )->implode('<br>');
-    }
+{
+    $items = $this->productsWithDetails();
+
+    if (empty($items)) return '';
+
+    return collect($items)->map(fn ($i) =>
+        "{$i['brand_name']} – {$i['category_name']} – {$i['product_name']} – {$i['color']} – Qty: {$i['quantity']}"
+    )->implode('<br>');
+}
+
 
     // ================= ALAMAT =================
     public function getAddressTextAttribute(): string

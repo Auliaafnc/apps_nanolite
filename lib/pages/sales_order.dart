@@ -105,8 +105,6 @@ class _SalesOrderScreenState extends State<SalesOrderScreen> {
       raw.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
 
   // ====== Tambahan: normalisasi URL supaya tidak "localhost" tanpa http ======
-
-  // Ambil origin dari ApiService.baseUrl → "http(s)://host[:port]"
   String get _originFromBase {
     final u = Uri.tryParse(ApiService.baseUrl);
     if (u == null) return '';
@@ -114,16 +112,13 @@ class _SalesOrderScreenState extends State<SalesOrderScreen> {
     return '${u.scheme}://${u.host}$port';
   }
 
-  // Selalu jadikan URL absolut & valid untuk file dokumen
   String _normalizeDocUrl(String raw) {
     if (raw.isEmpty) return raw;
 
-    // sudah absolut
     if (raw.startsWith('http://') || raw.startsWith('https://')) return raw;
 
     final lower = raw.toLowerCase();
 
-    // backend kadang kirim "localhost/..." atau "127.0.0.1/..."
     if (lower.startsWith('localhost/') ||
         lower.startsWith('127.0.0.1/') ||
         lower.startsWith('::1/')) {
@@ -131,16 +126,13 @@ class _SalesOrderScreenState extends State<SalesOrderScreen> {
       return '$scheme://$raw';
     }
 
-    // path Laravel umum
     if (raw.startsWith('/storage/')) return '$_originFromBase$raw';
-    if (raw.startsWith('storage/'))  return '$_originFromBase/$raw';
+    if (raw.startsWith('storage/')) return '$_originFromBase/$raw';
 
-    // path mentah yang kamu simpan: "orders/pdf/....pdf" atau "orders/excel/....xlsx"
     if (raw.startsWith('orders/pdf/') || raw.startsWith('orders/excel/')) {
       return '$_originFromBase/storage/$raw';
     }
 
-    // fallback: sambung ke origin
     final withSlash = raw.startsWith('/') ? raw : '/$raw';
     return '$_originFromBase$withSlash';
   }
@@ -149,10 +141,9 @@ class _SalesOrderScreenState extends State<SalesOrderScreen> {
     if (url == null || url.isEmpty) return;
     final fname = _safeFilename('SalesOrder_$orderNo.pdf');
     final normalized = _normalizeDocUrl(url);
-    await downloadFile(normalized, fileName: fname); // auto-unduh (support web)
+    await downloadFile(normalized, fileName: fname);
   }
 
-  // ===== Status chip (sama gaya dengan Garansi/Return) =====
   Widget _statusChip(String raw) {
     final v = (raw.isEmpty ? '-' : raw).toLowerCase();
     String label;
@@ -187,7 +178,8 @@ class _SalesOrderScreenState extends State<SalesOrderScreen> {
         borderRadius: BorderRadius.circular(999),
         border: Border.all(color: Colors.white24),
       ),
-      child: Text(label, style: const TextStyle(fontSize: 12, color: Colors.white)),
+      child:
+          Text(label, style: const TextStyle(fontSize: 12, color: Colors.white)),
     );
   }
 
@@ -247,7 +239,6 @@ class _SalesOrderScreenState extends State<SalesOrderScreen> {
                     ),
                   ],
                   const SizedBox(height: 16),
-
                   Expanded(
                     child: RefreshIndicator(
                       onRefresh: _fetch,
@@ -292,8 +283,6 @@ class _SalesOrderScreenState extends State<SalesOrderScreen> {
           ),
         ),
       ),
-
-      // Bottom nav (gaya sama seperti layar lain)
       bottomNavigationBar: Container(
         color: const Color(0xFF0A1B2D),
         padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 20),
@@ -380,8 +369,7 @@ class _SalesOrderScreenState extends State<SalesOrderScreen> {
       onPressed: () async {
         final created = await Navigator.push<bool>(
           context,
-          MaterialPageRoute(
-              builder: (_) => const CreateSalesOrderScreen()),
+          MaterialPageRoute(builder: (_) => const CreateSalesOrderScreen()),
         );
         if (created == true && mounted) {
           await _fetch();
@@ -405,7 +393,6 @@ class _SalesOrderScreenState extends State<SalesOrderScreen> {
   }
 
   Widget _buildTable() {
-    // text cell helper + default width diperkecil supaya rapat
     DataCell _textCell(String v, {double width = 180}) => DataCell(
           SizedBox(
             width: width,
@@ -420,14 +407,11 @@ class _SalesOrderScreenState extends State<SalesOrderScreen> {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       child: DataTable(
-        // ====== Rapatkan spasi tabel ======
-        columnSpacing: 10,        // default 56
-        horizontalMargin: 8,      // padding kiri/kanan sel
-        headingRowHeight: 38,     // tinggi baris header
-        dataRowHeight: 40,        // tinggi baris data
-
-        headingRowColor:
-            MaterialStateProperty.all(const Color(0xFF22344C)),
+        columnSpacing: 10,
+        horizontalMargin: 8,
+        headingRowHeight: 38,
+        dataRowHeight: 40,
+        headingRowColor: MaterialStateProperty.all(const Color(0xFF22344C)),
         dataRowColor: MaterialStateProperty.resolveWith(
           (s) => s.contains(MaterialState.hovered)
               ? const Color(0xFF1B2B42)
@@ -439,7 +423,6 @@ class _SalesOrderScreenState extends State<SalesOrderScreen> {
           fontSize: 13,
         ),
         dataTextStyle: const TextStyle(color: Colors.white, fontSize: 13),
-
         columns: const [
           DataColumn(label: Text('Order Number')),
           DataColumn(label: Text('Department')),
@@ -482,26 +465,21 @@ class _SalesOrderScreenState extends State<SalesOrderScreen> {
             _textCell(o.totalAkhir, width: 110),
             _textCell(o.metodePembayaran, width: 130),
             _textCell(o.statusPembayaran, width: 130),
-
-            // ==== STATUS pakai chip ====
             DataCell(_statusChip(o.status)),
-
             DataCell(
               (o.invoicePdfUrl != null && o.invoicePdfUrl!.isNotEmpty)
                   ? IconButton(
                       tooltip: 'Unduh PDF',
-                      icon: const Icon(Icons.picture_as_pdf, color: Colors.white),
-                      onPressed: () {
-                        final url = o.invoicePdfUrl!;
-                        final fname = _safeFilename('SalesOrder_${o.orderNo}.pdf');
-                        // panggil segera; biarkan async jalan di belakang
-                        downloadFile(url, fileName: fname);
+                      icon: const Icon(Icons.picture_as_pdf,
+                          color: Colors.white),
+                      onPressed: () async {
+                        await _downloadPdf(o.invoicePdfUrl, o.orderNo);
                       },
                     )
                   : const Text('-'),
             ),
- _textCell(o.createdAt, width: 120),
-  _textCell(o.updatedAt, width: 120),
+            _textCell(o.createdAt, width: 120),
+            _textCell(o.updatedAt, width: 120),
           ]);
         }).toList(),
       ),

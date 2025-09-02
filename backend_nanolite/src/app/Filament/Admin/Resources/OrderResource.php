@@ -187,87 +187,49 @@ class OrderResource extends Resource
                         $set('total_harga_after_tax', round($totalAkhir));
                     }),
 
-                Repeater::make('products')->label('Detail Produk')->reactive()->live()
+                Repeater::make('products')
+                    ->label('Detail Produk')
+                    ->reactive()
                     ->schema([
-                        Select::make('brand_produk_id')->label('Brand')
-                            ->options(fn() => Brand::pluck('name','id'))
-                            ->reactive()
-                            ->afterStateUpdated(fn($state, callable $set) => [
-                                $set('kategori_produk_id', null),
-                                $set('produk_id', null),
-                                $set('warna_id', null),
-                            ])
-                            ->required()->searchable(),
+                        Select::make('brand_id')->label('Brand')
+                            ->options(fn () => Brand::pluck('name', 'id'))
+                            ->afterStateUpdated(fn ($state, callable $set) => $set('kategori_id', null))
+                            ->required()
+                            ->searchable(),
 
-                        Select::make('kategori_produk_id')->label('Kategori')
-                            ->options(fn(callable $get) =>
-                                $get('brand_produk_id')
-                                    ? Category::where('brand_id', $get('brand_produk_id'))->pluck('name','id')
-                                    : []
-                            )
-                            ->reactive()
-                            ->afterStateUpdated(fn($state, callable $set) => [
-                                $set('produk_id', null),
-                                $set('warna_id', null),
-                            ])->searchable()->required(),
+                        Select::make('kategori_id')->label('Kategori')
+                            ->options(fn (callable $get) => $get('brand_id')
+                                ? Category::where('brand_id', $get('brand_id'))->pluck('name', 'id')
+                                : [])
+                            ->afterStateUpdated(fn ($state, callable $set) => $set('produk_id', null))
+                            ->required()
+                            ->searchable(),
 
                         Select::make('produk_id')->label('Produk')
-                            ->options(fn(callable $get) => $get('kategori_produk_id')
-                                ? Product::where('category_id', $get('kategori_produk_id'))->pluck('name','id')
+                            ->options(fn (callable $get) => $get('kategori_id')
+                                ? Product::where('category_id', $get('kategori_id'))->pluck('name', 'id')
                                 : [])
-                            ->reactive()
-                            ->afterStateUpdated(function($state, callable $set, callable $get) {
-                                $price = Product::find($state)?->price ?? 0;
-                                $set('price', $price);
-                                $set('subtotal', $price * ($get('quantity') ?? 0));
-                            })
-                            ->searchable()->required(),
+                            ->required()
+                            ->searchable(),
 
                         Select::make('warna_id')->label('Warna')
-                            ->options(fn(callable $get) => $get('produk_id')
-                                ? collect(Product::find($get('produk_id'))->colors ?? [])->mapWithKeys(fn($c) => [$c => $c])->toArray()
+                            ->options(fn (callable $get) => $get('produk_id')
+                                ? collect(Product::find($get('produk_id'))->colors ?? [])->mapWithKeys(fn ($c) => [$c => $c])->toArray()
                                 : [])
-                            ->required()->searchable(),
-
-                        TextInput::make('price')->label('Harga / Produk')->prefix('Rp')->disabled()->live()->numeric()
-                            ->dehydrated()
-                            ->dehydrateStateUsing(fn($state) => is_string($state) ? (int) str_replace('.', '', $state) : $state),
-
-                        TextInput::make('quantity')->label('Jumlah')->reactive()->prefix('Qty')->numeric()
-                            ->afterStateUpdated(function ($state, callable $set, callable $get) {
-                                $price = (int) ($get('price') ?? 0);
-                                $qty = (int) $state;
-
-                                $subtotal = $price * $qty;
-                                $set('subtotal', $subtotal);
-
-                                $products = $get('../../products') ?? [];
-                                $totalHarga = collect($products)->sum(fn($item) => $item['subtotal'] ?? 0);
-                                $set('../../total_harga', $totalHarga);
-
-                                $diskon1 = floatval($get('../../diskon_1') ?? 0);
-                                $diskon2 = floatval($get('../../diskon_2') ?? 0);
-                                $isDiskonOn = $get('../../diskons_enabled') ?? false;
-                                $diskonPersen = $isDiskonOn ? $diskon1 + $diskon2 : 0;
-
-                                $totalAkhir = $totalHarga * (1 - $diskonPersen / 100);
-
-                                if ($totalAkhir < 1000) {
-                                    Notification::make()
-                                        ->title('Total terlalu kecil, mohon periksa kembali diskon dan quantity.')
-                                        ->danger()->persistent()->send();
-
-                                    $set('../../total_harga_after_tax', null);
-                                    return;
-                                }
-
-                                $set('../../total_harga_after_tax', round($totalAkhir));
-                            })
+                            ->searchable()
                             ->required(),
 
-                        TextInput::make('subtotal')->label('Subtotal')->disabled()->prefix('Rp')->dehydrated()->numeric()->live(),
+                        TextInput::make('quantity')
+                            ->label('Jumlah')
+                            ->numeric()
+                            ->prefix('Qty')
+                            ->required(),
                     ])
-                    ->columns(3)->defaultItems(1)->minItems(1)->createItemButtonLabel('Tambah Produk')->dehydrated(),
+                    ->columns(3)
+                    ->minItems(1)
+                    ->defaultItems(1)
+                    ->createItemButtonLabel('Tambah Produk')
+                    ->required(),
 
                 Select::make('status')->label('Status')
                     ->options(['approved' => 'Disetujui','rejected' => 'Ditolak'])

@@ -12,6 +12,7 @@ use App\Models\CustomerCategories;
 use App\Models\Category;
 use App\Models\Product;
 use Filament\Forms\Form;
+use Filament\Forms\Get;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\DatePicker;
@@ -164,27 +165,61 @@ class GaransiResource extends Resource
                             ->required()
                             ->searchable(),
 
-                        Select::make('kategori_id')->label('Kategori')
-                            ->options(fn (callable $get) => $get('brand_id')
+                        // KATEGORI
+                    Select::make('kategori_id')->label('Kategori')
+                        ->options(fn (callable $get) =>
+                            $get('brand_id')
                                 ? Category::where('brand_id', $get('brand_id'))->pluck('name', 'id')
-                                : [])
-                            ->afterStateUpdated(fn ($state, callable $set) => $set('produk_id', null))
-                            ->required()
-                            ->searchable(),
+                                : []
+                        )
+                        ->reactive()
+                        ->afterStateUpdated(fn ($state, callable $set) => [
+                            $set('produk_id', null),
+                            $set('warna', null),     // reset warna jika kategori berubah
+                        ])
+                        ->required()
+                        ->searchable(),
 
-                        Select::make('produk_id')->label('Produk')
-                            ->options(fn (callable $get) => $get('kategori_id')
+                    // PRODUK
+                    Select::make('produk_id')->label('Produk')
+                        ->options(fn (callable $get) =>
+                            $get('kategori_id')
                                 ? Product::where('category_id', $get('kategori_id'))->pluck('name', 'id')
-                                : [])
-                            ->required()
-                            ->searchable(),
+                                : []
+                        )
+                        ->reactive()
+                        ->afterStateUpdated(fn ($state, callable $set) => $set('warna', null)) // reset warna saat produk ganti
+                        ->required()
+                        ->searchable(),
 
-                        Select::make('warna_id')->label('Warna')
-                            ->options(fn (callable $get) => $get('produk_id')
-                                ? collect(Product::find($get('produk_id'))->colors ?? [])->mapWithKeys(fn ($c) => [$c => $c])->toArray()
-                                : [])
-                            ->searchable()
-                            ->required(),
+                    // WARNA (colors = array)
+                    Select::make('warna')
+                        ->label('Warna')
+                        ->options(function (callable $get) {
+                            $productId = $get('produk_id');
+                            if (blank($productId)) return [];
+
+                            $product = \App\Models\Product::find($productId);
+                            $raw = $product?->colors ?? [];   // pastikan di model Product: protected $casts = ['colors' => 'array'];
+
+                            // array sederhana: ["6500K","3000K", ...]
+                            if (is_array($raw) && array_is_list($raw)) {
+                                return collect($raw)->mapWithKeys(fn ($v) => [$v => (string) $v])->all();
+                            }
+
+                            // array asosiatif: ["6500K"=>"Cool White", ...]
+                            if (is_array($raw)) {
+                                return collect($raw)->mapWithKeys(fn ($label, $key) => [(string) $key => (string) $label])->all();
+                            }
+
+                            return [];
+                        })
+                        ->reactive() // ini yg memicu re-run options ketika state dalam repeater berubah
+                        ->disabled(fn (callable $get) => blank($get('produk_id')))
+                        ->required()
+                        ->native(false)
+                        ->multiple(),
+
 
                         TextInput::make('quantity')
                             ->label('Jumlah')

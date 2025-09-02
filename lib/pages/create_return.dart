@@ -364,8 +364,9 @@ class _CreateReturnScreenState extends State<CreateReturnScreen> {
       reason: _reasonCtrl.text.trim(),
       note: _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim(),
       products: products,
-      imagePath: imageStr,
+      photos: _photos,   // ✅ langsung kirim XFile list
     );
+
     if (mounted) setState(() => _submitting = false);
 
     if (!mounted) return;
