@@ -189,45 +189,88 @@ class OrderResource extends Resource
 
                 Repeater::make('products')->label('Detail Produk')->reactive()->live()
                     ->schema([
-                        Select::make('brand_produk_id')->label('Brand')
-                            ->options(fn() => Brand::pluck('name','id'))
-                            ->reactive()
-                            ->afterStateUpdated(fn($state, callable $set) => [
-                                $set('kategori_produk_id', null),
-                                $set('produk_id', null),
-                                $set('warna_id', null),
-                            ])
-                            ->required()->searchable(),
+                        Select::make('brand_produk_id')
+    ->label('Brand')
+    ->options(fn () => Brand::pluck('name','id'))
+    ->reactive()
+    // HAPUS baris ini:
+    // ->afterStateUpdated(fn($state, callable $set) => [
+    //     $set('kategori_produk_id', null),
+    //     $set('produk_id', null),
+    //     $set('warna_id', null),
+    // ])
+    ->required()
+    ->searchable(),
 
-                        Select::make('kategori_produk_id')->label('Kategori')
-                            ->options(fn(callable $get) =>
-                                $get('brand_produk_id')
-                                    ? Category::where('brand_id', $get('brand_produk_id'))->pluck('name','id')
-                                    : []
-                            )
-                            ->reactive()
-                            ->afterStateUpdated(fn($state, callable $set) => [
-                                $set('produk_id', null),
-                                $set('warna_id', null),
-                            ])->searchable()->required(),
 
-                        Select::make('produk_id')->label('Produk')
-                            ->options(fn(callable $get) => $get('kategori_produk_id')
-                                ? Product::where('category_id', $get('kategori_produk_id'))->pluck('name','id')
-                                : [])
-                            ->reactive()
-                            ->afterStateUpdated(function($state, callable $set, callable $get) {
-                                $price = Product::find($state)?->price ?? 0;
-                                $set('price', $price);
-                                $set('subtotal', $price * ($get('quantity') ?? 0));
-                            })
-                            ->searchable()->required(),
+                        Select::make('kategori_produk_id')
+    ->label('Kategori')
+    ->options(function (callable $get) {
+        // Jika brand dipilih, filter berdasarkan brand.
+        $brandId = $get('brand_produk_id');
+        return $brandId
+            ? Category::where('brand_id', $brandId)->pluck('name','id')
+            : Category::pluck('name','id'); // kalau brand kosong, tampilkan semua kategori
+    })
+    ->reactive()
+    // HAPUS baris ini:
+    // ->afterStateUpdated(fn($state, callable $set) => [
+    //     $set('produk_id', null),
+    //     $set('warna_id', null),
+    // ])
+    ->searchable()
+    ->required(),
 
-                        Select::make('warna_id')->label('Warna')
-                            ->options(fn(callable $get) => $get('produk_id')
-                                ? collect(Product::find($get('produk_id'))->colors ?? [])->mapWithKeys(fn($c) => [$c => $c])->toArray()
-                                : [])
-                            ->required()->searchable(),
+
+                        Select::make('produk_id')
+    ->label('Produk')
+    ->options(function (callable $get) {
+        // Tetap tampilkan produk berdasarkan kategori jika ada,
+        // kalau tidak ada kategori, tampilkan semua agar pilihan lama tidak "hilang".
+        $kategoriId = $get('kategori_produk_id');
+        return $kategoriId
+            ? Product::where('category_id', $kategoriId)->pluck('name','id')
+            : Product::pluck('name','id');
+    })
+    ->reactive()
+    ->afterStateHydrated(function ($state, callable $set) {
+        if (!$state) return;
+        $p = Product::find($state);
+        if ($p) {
+            // sinkronkan brand & kategori dari produk
+            $set('brand_produk_id', $p->brand_id);
+            $set('kategori_produk_id', $p->category_id);
+            // JANGAN ubah warna/harga/jumlah/subtotal di sini
+        }
+    })
+    ->afterStateUpdated(function ($state, callable $set, callable $get) {
+        $p = Product::find($state);
+        if ($p) {
+            // sinkronkan brand & kategori dari produk
+            $set('brand_produk_id', $p->brand_id);
+            $set('kategori_produk_id', $p->category_id);
+
+            // (opsional) kalau kamu ingin harga mengikuti produk hanya saat kosong:
+            // if (empty($get('price'))) { $set('price', (int) $p->price); }
+
+            // SUBTOTAL / QTY / WARNA TIDAK DIUBAH
+        }
+    })
+    ->searchable()
+    ->required(),
+
+
+                        Select::make('warna_id')
+    ->label('Warna')
+    ->options(function (callable $get) {
+        $pid = $get('produk_id');
+        if (!$pid) return [];
+        $colors = Product::find($pid)?->colors ?? [];
+        return collect($colors)->mapWithKeys(fn($c) => [$c => $c])->toArray();
+    })
+    ->required()
+    ->searchable(),
+
 
                         TextInput::make('price')->label('Harga / Produk')->prefix('Rp')->disabled()->live()->numeric()
                             ->dehydrated()

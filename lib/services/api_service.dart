@@ -736,6 +736,11 @@ class ApiService {
     }
     if (data == null) throw Exception('Customer detail not found');
     return Customer.fromJson(data);
+    final map = Map<String, dynamic>.from(data);
+      map['image'] =
+          _absoluteUrl((map['image'] ?? map['image_url'] ?? '').toString()); // 🔥 tambahin ini
+      return Customer.fromJson(map);
+
   }
 
   // ---- Detail customer RAW map (untuk formatAddress) ----
@@ -1099,22 +1104,28 @@ class ApiService {
     return res.statusCode == 200 || res.statusCode == 201;
   }
 
-  static Future<List<Customer>> fetchCustomers(
-      {int page = 1, int perPage = 20, String? q}) async {
-    final headers = await _authorizedHeaders();
-    final params = <String, String>{
-      'page': '$page',
-      'per_page': '$perPage',
-      if (q != null && q.isNotEmpty) 'filter[search]': q,
-    };
-    final uri = _buildUri('customers', query: params);
-    final res = await http.get(uri, headers: headers);
-    if (res.statusCode != 200) {
-      throw Exception('GET /customers ${res.statusCode}: ${res.body}');
-    }
-    final items = _extractList(_safeDecode(res.body));
-    return items.map(Customer.fromJson).toList();
+  static Future<List<Customer>> fetchCustomers({int page = 1, int perPage = 20, String? q}) async {
+  final headers = await _authorizedHeaders();
+  final params = {
+    'page': '$page',
+    'per_page': '$perPage',
+    if (q != null && q.isNotEmpty) 'filter[search]': q,
+  };
+  final uri = _buildUri('customers', query: params);
+  final res = await http.get(uri, headers: headers);
+  if (res.statusCode != 200) {
+    throw Exception('GET /customers ${res.statusCode}: ${res.body}');
   }
+  final items = _extractList(_safeDecode(res.body));
+
+  return items.map((raw) {
+    final map = Map<String, dynamic>.from(raw);
+    map['image'] =
+        _absoluteUrl((map['image'] ?? map['image_url'] ?? '').toString()); // 🔥 tambahin ini
+    return Customer.fromJson(map);
+  }).toList();
+}
+
 
   // ---------- SALES ORDERS ----------
   static OrderTotals computeTotals({
@@ -1327,45 +1338,97 @@ class ApiService {
   // ---------- RETURNS ----------
 // ---------- RETURNS ----------
   /// POST return pakai JSON (bukan multipart) agar 'products' & 'address' terbaca sebagai array
-  static Future<bool> createReturn({
-    required int companyId,
-    required int departmentId,
-    required int employeeId,
-    required int customerId,
-    required int categoryId,
-    required String phone,
-    required List<Map<String, dynamic>> address,  // array seperti garansi
-    required List<Map<String, dynamic>> products, // array
-    required int amount,
-    required String reason,
-    String? note,
-    String status = 'pending',
-    String? imagePath, // opsional; base64 string
-  }) async {
-    final url = _buildUri('product-returns'); // endpoint return
-    final headers = await _authorizedHeaders(jsonContent: true);
+  // lib/services/api_service.dart
 
-    final payload = <String, dynamic>{
-      'company_id': companyId,
-      'department_id': departmentId,
-      'employee_id': employeeId,
-      'customer_id': customerId,
-      'customer_categories_id': categoryId,
-      'phone': phone,
-      'address': address,     // array
-      'products': products,   // array
-      'amount': amount,
-      'reason': reason,
-      'status': status,
-      if (note != null && note.isNotEmpty) 'note': note,
-      if (imagePath != null && imagePath.isNotEmpty) 'image': imagePath,
-    };
+static Future<bool> createReturn({
+  required int companyId,
+  required int departmentId,
+  required int employeeId,
+  required int customerId,
+  required int categoryId,
+  required String phone,
+  required List<Map<String, dynamic>> address,   // array
+  required List<Map<String, dynamic>> products,  // array
+  required int amount,
+  required String reason,
+  String? note,
+  String status = 'pending',
+  List<XFile>? photos, // ✅ sekarang pakai file list, bukan base64
+}) async {
+  final url = _buildUri('product-returns');
+  final headers = await _authorizedHeaders();
 
-    final res = await http.post(url, headers: headers, body: jsonEncode(payload));
-    // ignore: avoid_print
-    print('DEBUG createReturn => ${res.statusCode} ${res.body}');
-    return res.statusCode == 200 || res.statusCode == 201;
+  final request = http.MultipartRequest('POST', url);
+  request.headers.addAll(headers);
+
+  // ===== field utama =====
+  request.fields['company_id'] = companyId.toString();
+  request.fields['department_id'] = departmentId.toString();
+  request.fields['employee_id'] = employeeId.toString();
+  request.fields['customer_id'] = customerId.toString();
+  request.fields['customer_categories_id'] = categoryId.toString();
+  request.fields['phone'] = phone;
+  request.fields['amount'] = amount.toString();
+  request.fields['reason'] = reason;
+  request.fields['status'] = status;
+  if (note != null && note.isNotEmpty) {
+    request.fields['note'] = note;
   }
+
+  // ===== Address (array) =====
+  for (int i = 0; i < address.length; i++) {
+    final addr = address[i];
+    request.fields['address[$i][provinsi]'] = addr['provinsi'] ?? '-';
+    request.fields['address[$i][kota_kab]'] = addr['kota_kab'] ?? '-';
+    request.fields['address[$i][kecamatan]'] = addr['kecamatan'] ?? '-';
+    request.fields['address[$i][kelurahan]'] = addr['kelurahan'] ?? '-';
+    request.fields['address[$i][kode_pos]'] = addr['kode_pos'] ?? '-';
+    request.fields['address[$i][detail_alamat]'] = addr['detail_alamat'] ?? '-';
+  }
+
+  // ===== Products (array) =====
+  for (int i = 0; i < products.length; i++) {
+    final p = products[i];
+    request.fields['products[$i][produk_id]'] = p['produk_id'] ?? '-';
+    request.fields['products[$i][warna_id]'] = p['warna_id'] ?? '-';
+    request.fields['products[$i][quantity]'] = p['quantity'] ?? '0';
+    request.fields['products[$i][brand_id]'] = p['brand_id'] ?? '-';
+    request.fields['products[$i][kategori_id]'] = p['kategori_id'] ?? '-';
+  }
+
+  // ===== Upload foto (multi) =====
+  if (photos != null && photos.isNotEmpty) {
+    for (final photo in photos) {
+      if (kIsWeb) {
+        final bytes = await photo.readAsBytes();
+        request.files.add(
+          http.MultipartFile.fromBytes(
+            'image[]',
+            bytes,
+            filename: photo.name,
+          ),
+        );
+      } else {
+        request.files.add(
+          await http.MultipartFile.fromPath(
+            'image[]',
+            photo.path,
+          ),
+        );
+      }
+    }
+  }
+
+  // ===== Kirim request =====
+  final streamed = await request.send();
+  final res = await http.Response.fromStream(streamed);
+
+  // debug log
+  print("DEBUG createReturn => ${res.statusCode} ${res.body}");
+
+  return res.statusCode == 200 || res.statusCode == 201;
+}
+
 
 
   static Future<List<OptionItem>> fetchColors() async => <OptionItem>[];

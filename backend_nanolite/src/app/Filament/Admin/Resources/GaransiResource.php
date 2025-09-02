@@ -18,7 +18,6 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Repeater;
-use Illuminate\Support\Str;
 use Filament\Resources\Resource;
 use Illuminate\Support\Facades\Storage;
 use Filament\Forms\Components\FileUpload;
@@ -127,26 +126,27 @@ class GaransiResource extends Resource
                     ->required()->preload()->searchable()->placeholder('Pilih Customer'),
 
                 TextInput::make('phone')->label('Phone')->reactive()->required(),
+
                 Textarea::make('address')
-                ->label('Alamat')
-                ->rows(3)
-                ->required()
-                ->formatStateUsing(function ($state, $record) {
-                    if (is_array($state)) {
-                        return collect($state)->map(function ($i) {
-                            return implode(', ', array_filter([
-                                $i['detail_alamat'] ?? null,
-                                $i['kelurahan'] ?? null,
-                                $i['kecamatan'] ?? null,
-                                $i['kota_kab'] ?? null,
-                                $i['provinsi'] ?? null,
-                                $i['kode_pos'] ?? null,
-                            ], fn ($v) => !empty($v) && $v !== '-')); // 🔥 skip kosong & strip
-                        })->implode("\n");
-                    }
-                    return $state;
-                })
-                ->dehydrateStateUsing(fn ($state) => $state),
+                    ->label('Alamat')
+                    ->rows(3)
+                    ->required()
+                    ->formatStateUsing(function ($state) {
+                        if (is_array($state)) {
+                            return collect($state)->map(function ($i) {
+                                return implode(', ', array_filter([
+                                    $i['detail_alamat'] ?? null,
+                                    $i['kelurahan'] ?? null,
+                                    $i['kecamatan'] ?? null,
+                                    $i['kota_kab'] ?? null,
+                                    $i['provinsi'] ?? null,
+                                    $i['kode_pos'] ?? null,
+                                ], fn ($v) => !empty($v) && $v !== '-'));
+                            })->implode("\n");
+                        }
+                        return $state;
+                    })
+                    ->dehydrateStateUsing(fn ($state) => $state),
 
                 DatePicker::make('purchase_date')->label('Tanggal Pembelian')->required(),
                 DatePicker::make('claim_date')->label('Tanggal Klaim Garansi')->required(),
@@ -154,49 +154,132 @@ class GaransiResource extends Resource
                 Textarea::make('reason')->label('Alasan Pengajuan Garansi')->required(),
                 Textarea::make('note')->label('Catatan Tambahan')->nullable(),
 
-                Repeater::make('products')
-                    ->label('Detail Produk')
-                    ->reactive()
-                    ->schema([
-                        Select::make('brand_id')->label('Brand')
-                            ->options(fn () => Brand::pluck('name', 'id'))
-                            ->afterStateUpdated(fn ($state, callable $set) => $set('kategori_id', null))
-                            ->required()
-                            ->searchable(),
+               Repeater::make('products')
+    ->label('Detail Produk')
+    ->reactive()
+    ->schema([
+        // BRAND
+        Select::make('brand_id')
+            ->label('Brand')
+            ->options(fn () => Brand::pluck('name', 'id'))
+            ->reactive()
+            ->required()
+            ->searchable(),
 
-                        Select::make('kategori_id')->label('Kategori')
-                            ->options(fn (callable $get) => $get('brand_id')
-                                ? Category::where('brand_id', $get('brand_id'))->pluck('name', 'id')
-                                : [])
-                            ->afterStateUpdated(fn ($state, callable $set) => $set('produk_id', null))
-                            ->required()
-                            ->searchable(),
+        // KATEGORI
+        Select::make('kategori_id')
+            ->label('Kategori')
+            ->options(function (callable $get) {
+                $brandId = $get('brand_id');
+                return $brandId
+                    ? Category::where('brand_id', $brandId)->pluck('name', 'id')
+                    : Category::pluck('name', 'id');
+            })
+            ->reactive()
+            ->required()
+            ->searchable(),
 
-                        Select::make('produk_id')->label('Produk')
-                            ->options(fn (callable $get) => $get('kategori_id')
-                                ? Product::where('category_id', $get('kategori_id'))->pluck('name', 'id')
-                                : [])
-                            ->required()
-                            ->searchable(),
+        // PRODUK
+        Select::make('produk_id')
+            ->label('Produk')
+            ->options(function (callable $get) {
+                $kategoriId = $get('kategori_id');
+                return $kategoriId
+                    ? Product::where('category_id', $kategoriId)->pluck('name', 'id')
+                    : Product::pluck('name', 'id');
+            })
+            ->reactive()
+            ->afterStateHydrated(function ($state, callable $set, callable $get) {
+                if (!$state) return;
 
-                        Select::make('warna_id')->label('Warna')
-                            ->options(fn (callable $get) => $get('produk_id')
-                                ? collect(Product::find($get('produk_id'))->colors ?? [])->mapWithKeys(fn ($c) => [$c => $c])->toArray()
-                                : [])
-                            ->searchable()
-                            ->required(),
+                $p = Product::find($state);
+                if (!$p) return;
 
-                        TextInput::make('quantity')
-                            ->label('Jumlah')
-                            ->numeric()
-                            ->prefix('Qty')
-                            ->required(),
-                    ])
-                    ->columns(3)
-                    ->minItems(1)
-                    ->defaultItems(1)
-                    ->createItemButtonLabel('Tambah Produk')
-                    ->required(),
+                // sinkron brand & kategori
+                $set('brand_id', $p->brand_id);
+                $set('kategori_id', $p->category_id);
+
+                // KONVERSI warna index -> label, untuk data lama
+                $currentWarna = $get('warna_id');
+                $colors = $p->colors ?? [];
+                if (is_numeric($currentWarna)) {
+                    $idx = (int) $currentWarna;
+                    if (isset($colors[$idx])) {
+                        $set('warna_id', $colors[$idx]); // jadikan string label
+                    }
+                }
+            })
+            ->afterStateUpdated(function ($state, callable $set, callable $get) {
+                $p = Product::find($state);
+                if (!$p) return;
+
+                // sinkron brand & kategori
+                $set('brand_id', $p->brand_id);
+                $set('kategori_id', $p->category_id);
+
+                // validasi/konversi warna saat produk berubah
+                $current = $get('warna_id');
+                $colors  = collect($p->colors ?? [])->mapWithKeys(fn($c) => [$c => $c])->toArray();
+
+                // kalau masih angka (data lama), coba konversi
+                if (is_numeric($current)) {
+                    $idx = (int) $current;
+                    $raw = $p->colors ?? [];
+                    if (isset($raw[$idx])) {
+                        $set('warna_id', $raw[$idx]);
+                        return;
+                    }
+                }
+
+                // kalau string tapi tidak ada di pilihan warna produk baru -> reset
+                if ($current && !array_key_exists($current, $colors)) {
+                    $set('warna_id', null);
+                }
+            })
+            ->searchable()
+            ->required(),
+
+        // WARNA (selalu kunci=label, value=label)
+        Select::make('warna_id')
+            ->label('Warna')
+            ->options(function (callable $get) {
+                $pid = $get('produk_id');
+                if (!$pid) return [];
+                $colors = Product::find($pid)?->colors ?? [];
+                return collect($colors)->mapWithKeys(fn($c) => [$c => $c])->toArray();
+            })
+            ->reactive()
+            ->afterStateHydrated(function ($state, callable $set, callable $get) {
+                // kalau keburu hydrate sebelum produk, skip saja
+                $pid = $get('produk_id');
+                if (!$pid) return;
+
+                // data lama: angka -> label
+                if (is_numeric($state)) {
+                    $p = Product::find($pid);
+                    $colors = $p?->colors ?? [];
+                    $idx = (int) $state;
+                    if (isset($colors[$idx])) {
+                        $set('warna_id', $colors[$idx]);
+                    }
+                }
+            })
+            ->required()
+            ->searchable(),
+
+        // QTY
+        TextInput::make('quantity')
+            ->label('Jumlah')
+            ->numeric()
+            ->prefix('Qty')
+            ->required(),
+    ])
+    ->columns(3)
+    ->minItems(1)
+    ->defaultItems(1)
+    ->createItemButtonLabel('Tambah Produk')
+    ->required(),
+
 
 
                 FileUpload::make('image')->label('Foto')->image()->directory('garansi-photos')->maxSize(2048),
@@ -211,7 +294,7 @@ class GaransiResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->defaultSort('created_at', 'desc') // 🔥 terbaru dulu
+            ->defaultSort('created_at', 'desc')
             ->columns([
                 TextColumn::make('id')->label('ID')->sortable(),
                 TextColumn::make('no_garansi')->label('Garansi Number')->sortable()->searchable(),

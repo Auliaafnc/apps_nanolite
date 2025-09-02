@@ -10,7 +10,7 @@ use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Exports\ProductReturnExport;
 use App\Models\Concerns\OwnedByEmployee;
-use App\Models\Concerns\LatestFirst; 
+use App\Models\Concerns\LatestFirst;
 
 class ProductReturn extends Model
 {
@@ -52,6 +52,12 @@ class ProductReturn extends Model
     {
         static::creating(function (ProductReturn $return) {
             $return->no_return = 'RET-' . now()->format('Ymd') . strtoupper(Str::random(4));
+            self::normalizeProductColors($return);
+        });
+
+        static::saving(function (ProductReturn $return) {
+            self::consumeImageString($return);
+            self::normalizeProductColors($return);
         });
 
         static::saved(function (ProductReturn $return) {
@@ -70,17 +76,48 @@ class ProductReturn extends Model
         });
     }
 
+    /**
+     * Konversi warna_id angka -> label warna dari $product->colors
+     */
+    protected static function normalizeProductColors(ProductReturn $return): void
+    {
+        $items = $return->products;
+
+        if (is_string($items)) {
+            $items = json_decode($items, true) ?: [];
+        }
+        if (!is_array($items)) {
+            $items = [];
+        }
+
+        foreach ($items as &$it) {
+            $pid = $it['produk_id'] ?? null;
+            if (!$pid) continue;
+
+            $product = Product::find($pid);
+            if (!$product) continue;
+
+            if (array_key_exists('warna_id', $it) && is_numeric($it['warna_id'])) {
+                $idx = (int) $it['warna_id'];
+                $colors = $product->colors ?? [];
+                if (isset($colors[$idx])) {
+                    $it['warna_id'] = $colors[$idx]; // simpan label (contoh "3000K")
+                }
+            }
+        }
+
+        $return->products = $items;
+    }
+
     protected static function consumeImageString(ProductReturn $return): void
     {
         $img = (string) ($return->image ?? '');
         if ($img === '') return;
 
-        // Jika sudah URL http/https, biarkan
         if (str_starts_with($img, 'http://') || str_starts_with($img, 'https://')) {
             return;
         }
 
-        // Data URI? "data:image/png;base64,AAAA..."
         if (preg_match('/^data:image\/([a-zA-Z0-9.+-]+);base64,/', $img, $m)) {
             $ext = strtolower($m[1] ?? 'png');
             $data = substr($img, strpos($img, ',') + 1);
@@ -143,7 +180,6 @@ class ProductReturn extends Model
                 $addr['kode_pos'] ?? '',
             ];
 
-            // buang yang kosong atau "-"
             $cleaned = array_filter($parts, function ($v) {
                 $v = trim((string) $v);
                 return $v !== '' && $v !== '-';
@@ -154,5 +190,4 @@ class ProductReturn extends Model
 
         return '-';
     }
-
 }

@@ -12,12 +12,8 @@ use App\Models\CustomerCategories;
 use App\Models\Customer;
 use App\Models\Category;
 use Filament\Forms\Form;
-use Illuminate\Support\Str;
 use Maatwebsite\Excel\Facades\Excel;
 use Filament\Forms\Components\FileUpload;
-use Filament\Tables\Columns\ImageColumn;
-use Filament\Forms\Components\Hidden;
-use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Repeater;
@@ -30,6 +26,7 @@ use Illuminate\Support\Facades\Storage;
 use Filament\Tables\Actions\Action;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Columns\BadgeColumn;
+use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Actions\ViewAction;
 use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Actions\DeleteAction;
@@ -53,7 +50,9 @@ class ProductReturnResource extends Resource
     {
         return $form
             ->schema([
-                Select::make('department_id')->label('Department')->reactive()
+                Select::make('department_id')
+                    ->label('Department')
+                    ->reactive()
                     ->afterStateUpdated(fn($state, callable $set) => [
                         $set('employee_id', null),
                         $set('customer_categories_id', null),
@@ -62,7 +61,9 @@ class ProductReturnResource extends Resource
                     ->options(fn () => Department::where('status', 'active')->pluck('name', 'id'))
                     ->required()->searchable()->preload()->placeholder('Pilih Department'),
 
-                Select::make('employee_id')->label('Karyawan')->reactive()
+                Select::make('employee_id')
+                    ->label('Karyawan')
+                    ->reactive()
                     ->afterStateUpdated(fn($state, callable $set) => [
                         $set('customer_categories_id', null),
                         $set('customer_id', null),
@@ -76,28 +77,23 @@ class ProductReturnResource extends Resource
                     })
                     ->required()->searchable()->preload()->placeholder('Pilih Karyawan'),
 
-
                 Select::make('customer_categories_id')
                     ->label('Kategori Customer')
                     ->reactive()
                     ->afterStateUpdated(fn($state, callable $set) => $set('customer_id', null))
                     ->options(function (callable $get) {
                         $employeeId = $get('employee_id');
-                        if (!$employeeId) {
-                            return [];
-                        }
-
+                        if (!$employeeId) return [];
                         return CustomerCategories::whereHas('customers', function ($q) use ($employeeId) {
                                 $q->where('employee_id', $employeeId);
                             })
                             ->pluck('name', 'id');
                     })
-                    ->required()
-                    ->searchable()
-                    ->preload()
-                    ->placeholder('Pilih Kategori Customer'),
+                    ->required()->searchable()->preload()->placeholder('Pilih Kategori Customer'),
 
-                Select::make('customer_id')->label('Customer')->reactive()
+                Select::make('customer_id')
+                    ->label('Customer')
+                    ->reactive()
                     ->options(function (callable $get) {
                         $employeeId = $get('employee_id');
                         $categoryId = $get('customer_categories_id');
@@ -112,79 +108,117 @@ class ProductReturnResource extends Resource
                         if ($customer) {
                             $set('phone', $customer->phone);
                             $set('address', $customer->full_address);
-                            $set('customer_program_id', $customer->customer_program_id ?? null);
                         } else {
                             $set('phone', null);
                             $set('address', null);
-                            $set('customer_program_id', null);
                         }
                     })
                     ->required()->preload()->searchable()->placeholder('Pilih Customer'),
 
                 TextInput::make('phone')->label('Phone')->reactive()->required(),
-                Textarea::make('address')
-                ->label('Alamat')
-                ->rows(3)
-                ->required()
-                ->formatStateUsing(function ($state, $record) {
-                    if (is_array($state)) {
-                        return collect($state)->map(function ($i) {
-                            return implode(', ', array_filter([
-                                $i['detail_alamat'] ?? null,
-                                $i['kelurahan'] ?? null,
-                                $i['kecamatan'] ?? null,
-                                $i['kota_kab'] ?? null,
-                                $i['provinsi'] ?? null,
-                                $i['kode_pos'] ?? null,
-                            ], fn ($v) => !empty($v) && $v !== '-')); // 🔥 skip kosong & strip
-                        })->implode("\n");
-                    }
-                    return $state;
-                })
-                ->dehydrateStateUsing(fn ($state) => $state),
-                    
-
-
+                Textarea::make('address')->label('Address')->reactive()->rows(2),
 
                 TextInput::make('amount')->label('Nominal')->numeric()->prefix('Rp')->rules(['min:1'])->required(),
 
                 Textarea::make('reason')->label('Alasan Return')->required(),
                 Textarea::make('note')->label('Catatan Tambahan')->nullable(),
 
-                FileUpload::make('image')->label('Gambar')->image()->directory('return')->nullable(),
+                FileUpload::make('image')
+                    ->label('Gambar')
+                    ->image()
+                    ->disk('public')
+                    ->directory('return')
+                    ->visibility('public')
+                    ->nullable(),
 
+                // ===================== DETAIL PRODUK =====================
                 Repeater::make('products')
                     ->label('Detail Produk')
                     ->reactive()
                     ->schema([
-                        Select::make('brand_id')->label('Brand')
+                        // 1) BRAND — tidak mereset field lain
+                        Select::make('brand_id')
+                            ->label('Brand')
                             ->options(fn () => Brand::pluck('name', 'id'))
-                            ->afterStateUpdated(fn ($state, callable $set) => $set('kategori_id', null))
+                            ->reactive()
                             ->required()
                             ->searchable(),
 
-                        Select::make('kategori_id')->label('Kategori')
-                            ->options(fn (callable $get) => $get('brand_id')
-                                ? Category::where('brand_id', $get('brand_id'))->pluck('name', 'id')
-                                : [])
-                            ->afterStateUpdated(fn ($state, callable $set) => $set('produk_id', null))
+                        // 2) KATEGORI — filter by brand kalau ada, jika tidak, tampilkan semua
+                        Select::make('kategori_id')
+                            ->label('Kategori')
+                            ->options(function (callable $get) {
+                                $brandId = $get('brand_id');
+                                return $brandId
+                                    ? Category::where('brand_id', $brandId)->pluck('name', 'id')
+                                    : Category::pluck('name', 'id');
+                            })
+                            ->reactive()
                             ->required()
                             ->searchable(),
 
-                        Select::make('produk_id')->label('Produk')
-                            ->options(fn (callable $get) => $get('kategori_id')
-                                ? Product::where('category_id', $get('kategori_id'))->pluck('name', 'id')
-                                : [])
+                        // 3) PRODUK — sinkronkan brand & kategori saat hydrate / update
+                        Select::make('produk_id')
+                            ->label('Produk')
+                            ->options(function (callable $get) {
+                                $kategoriId = $get('kategori_id');
+                                return $kategoriId
+                                    ? Product::where('category_id', $kategoriId)->pluck('name', 'id')
+                                    : Product::pluck('name', 'id');
+                            })
+                            ->reactive()
+                            ->afterStateHydrated(function ($state, callable $set, callable $get) {
+                                if (!$state) return;
+                                $p = Product::find($state);
+                                if (!$p) return;
+
+                                // sinkron brand & kategori
+                                $set('brand_id', $p->brand_id);
+                                $set('kategori_id', $p->category_id);
+
+                                // jika warna masih angka (data lama), konversi ke label
+                                $warna = $get('warna_id');
+                                if ($warna !== null && $warna !== '' && is_numeric($warna)) {
+                                    $colors = $p->colors ?? [];
+                                    $idx = (int) $warna;
+                                    if (isset($colors[$idx])) {
+                                        $set('warna_id', $colors[$idx]);
+                                    }
+                                }
+                            })
+                            ->afterStateUpdated(function ($state, callable $set, callable $get) {
+                                $p = Product::find($state);
+                                if (!$p) return;
+
+                                // sinkron brand & kategori
+                                $set('brand_id', $p->brand_id);
+                                $set('kategori_id', $p->category_id);
+
+                                // validasi warna sekarang
+                                $current = $get('warna_id');
+                                $colorsMap = collect($p->colors ?? [])->mapWithKeys(fn($c) => [$c => $c])->toArray();
+                                if ($current && !array_key_exists($current, $colorsMap)) {
+                                    $set('warna_id', null);
+                                }
+                            })
                             ->required()
                             ->searchable(),
 
-                        Select::make('warna_id')->label('Warna')
-                            ->options(fn (callable $get) => $get('produk_id')
-                                ? collect(Product::find($get('produk_id'))->colors ?? [])->mapWithKeys(fn ($c) => [$c => $c])->toArray()
-                                : [])
-                            ->searchable()
-                            ->required(),
+                        // 4) WARNA — pakai label string (bukan index)
+                        Select::make('warna_id')
+                            ->label('Warna')
+                            ->options(function (callable $get) {
+                                $pid = $get('produk_id');
+                                if (!$pid) return [];
+                                $colors = Product::find($pid)?->colors ?? [];
+                                // jadikan ["3000K" => "3000K", ...]
+                                return collect($colors)->mapWithKeys(fn($c) => [$c => $c])->toArray();
+                            })
+                            ->reactive()
+                            ->required()
+                            ->searchable(),
 
+                        // 5) JUMLAH
                         TextInput::make('quantity')
                             ->label('Jumlah')
                             ->numeric()
@@ -199,7 +233,9 @@ class ProductReturnResource extends Resource
 
                 Select::make('status')->label('Status Pengajuan Return')
                     ->options(['pending' => 'Pending','approved' => 'Disetujui','rejected' => 'Ditolak'])
-                    ->default('pending')->searchable()->visible(fn ($context) => $context === 'edit')
+                    ->default('pending')
+                    ->searchable()
+                    ->visible(fn ($context) => $context === 'edit')
                     ->required(fn ($context) => $context === 'edit'),
             ]);
     }
@@ -207,7 +243,7 @@ class ProductReturnResource extends Resource
     public static function table(Table $table): Table
     {
         return $table
-            ->defaultSort('created_at', 'desc') // 🔥 terbaru dulu
+            ->defaultSort('created_at', 'desc')
             ->columns([
                 TextColumn::make('id')->label('ID')->sortable(),
                 TextColumn::make('no_return')->label('Return Number')->sortable()->searchable(),
@@ -215,15 +251,34 @@ class ProductReturnResource extends Resource
                 TextColumn::make('department.name')->label('Department')->searchable()->sortable(),
                 TextColumn::make('employee.name')->label('Karyawan')->searchable()->sortable(),
                 TextColumn::make('customer.name')->label('Customer')->sortable()->searchable(),
-
                 TextColumn::make('category.name')->label('Kategori Customer')->sortable()->searchable(),
 
                 TextColumn::make('phone')->label('Phone')->sortable(),
-                TextColumn::make('address_text')
-                    ->label('Alamat')
-                    ->limit(80)
-                    ->sortable()
-                    ->searchable(),
+
+                TextColumn::make('address')
+                    ->label('Address')
+                    ->formatStateUsing(function ($state) {
+                        if (is_string($state) && str_starts_with(trim($state), '{')) {
+                            $decoded = json_decode($state, true);
+                            if (json_last_error() === JSON_ERROR_NONE) {
+                                $state = $decoded;
+                            }
+                        }
+                        if (is_array($state)) {
+                            $detail = data_get($state, 'detail_alamat') ?? data_get($state, '0.detail_alamat') ?? '';
+                            $kel    = data_get($state, 'kelurahan.name') ?? data_get($state, 'kelurahan_name') ?? data_get($state, '0.kelurahan.name') ?? data_get($state, '0.kelurahan_name');
+                            $kec    = data_get($state, 'kecamatan.name') ?? data_get($state, 'kecamatan_name') ?? data_get($state, '0.kecamatan.name') ?? data_get($state, '0.kecamatan_name');
+                            $kota   = data_get($state, 'kota_kab.name') ?? data_get($state, 'kota_kab_name') ?? data_get($state, '0.kota_kab.name') ?? data_get($state, '0.kota_kab_name');
+                            $prov   = data_get($state, 'provinsi.name') ?? data_get($state, 'provinsi_name') ?? data_get($state, '0.provinsi.name') ?? data_get($state, '0.provinsi_name');
+                            $kode   = data_get($state, 'kode_pos') ?? data_get($state, '0.kode_pos');
+
+                            $parts = array_filter([$detail, $kel, $kec, $kota, $prov, $kode], fn ($v) =>
+                                filled($v) && strtolower((string)$v) !== 'null'
+                            );
+                            return $parts ? implode(', ', $parts) : '-';
+                        }
+                        return $state ?: '-';
+                    }),
 
                 TextColumn::make('products_details')->label('Detail Produk')->html()->sortable(),
 
@@ -237,7 +292,24 @@ class ProductReturnResource extends Resource
                     ->getStateUsing(fn ($record) => ($note = trim((string) $record->note ?? '')) !== '' ? $note : '-')
                     ->wrap()->extraAttributes(['style' => 'white-space: normal;']),
 
-                ImageColumn::make('image')->label('Gambar')->circular(),
+                ImageColumn::make('image')
+                    ->label('Gambar')
+                    ->getStateUsing(function ($record) {
+                        $val = $record->image;
+                        if (is_string($val) && str_starts_with($val, '[')) {
+                            $decoded = json_decode($val, true);
+                            $val = is_array($decoded) ? ($decoded[0] ?? null) : $val;
+                        }
+                        if (is_array($val)) {
+                            $val = $val[0] ?? null;
+                        }
+                        if (blank($val)) return null;
+                        $val = preg_replace('#^/?storage/#', '', $val);
+                        if (preg_match('#^https?://#', $val)) return $val;
+                        return asset('storage/' . ltrim($val, '/'));
+                    })
+                    ->disk('public')
+                    ->circular(),
 
                 BadgeColumn::make('status')->label('Status')
                     ->formatStateUsing(fn (string $state): string => match ($state) {
@@ -258,24 +330,18 @@ class ProductReturnResource extends Resource
                         Grid::make(4)->schema([
                             Select::make('department_id')->label('Department')
                                 ->options(Department::pluck('name', 'id'))->searchable()->preload(),
-
                             Select::make('employee_id')->label('Sales')
                                 ->options(Employee::pluck('name', 'id'))->searchable()->preload(),
-
                             Select::make('customer_id')->label('Customer')
                                 ->options(Customer::pluck('name', 'id'))->searchable()->preload(),
-
                             Select::make('customer_categories_id')->label('Kategori Customer')
                                 ->options(CustomerCategories::pluck('name', 'id'))->searchable()->preload(),
-
                             Select::make('status')->label('Status')
                                 ->options(['pending' => 'Pending','approved' => 'Disetujui','rejected' => 'Ditolak'])
                                 ->searchable(),
-
                             Select::make('brand_id')->label('Brand')->searchable()->options(Brand::pluck('name', 'id')),
                             Select::make('category_id')->label('Kategori Produk')->searchable()->options(Category::pluck('name', 'id')),
                             Select::make('product_id')->label('Produk')->searchable()->options(Product::pluck('name', 'id')),
-
                             Checkbox::make('export_all')->label('Print Semua Data')->reactive(),
                         ])
                     ])

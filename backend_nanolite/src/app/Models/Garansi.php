@@ -58,17 +58,23 @@ class Garansi extends Model
     protected static function booted()
     {
         static::creating(function (Garansi $garansi) {
-            // jika image dikirim base64, simpan ke storage dan ganti jadi path
+            // simpan image base64 jika ada
             self::consumeImageString($garansi);
+
+            // konversi warna index -> label agar konsisten
+            self::normalizeProductColors($garansi);
+
             $garansi->no_garansi = 'GAR-' . now()->format('Ymd') . strtoupper(Str::random(4));
         });
 
         static::saving(function (Garansi $garansi) {
-            // berjaga-jaga kalau update
+            // berjaga-jaga saat update
             self::consumeImageString($garansi);
+            self::normalizeProductColors($garansi);
         });
 
         static::saved(function (Garansi $garansi) {
+            // generate PDF & Excel
             $html = view('invoices.garansi', compact('garansi'))->render();
             $pdf = Pdf::loadHtml($html)->setPaper('a4', 'portrait');
 
@@ -83,6 +89,45 @@ class Garansi extends Model
     }
 
     /**
+     * Normalisasi: jika pada products[*][warna_id] masih angka/index,
+     * konversi ke label string berdasarkan $product->colors.
+     */
+    protected static function normalizeProductColors(Garansi $garansi): void
+    {
+        $items = $garansi->products;
+
+        if (is_string($items)) {
+            $items = json_decode($items, true) ?: [];
+        }
+        if (!is_array($items)) {
+            $items = [];
+        }
+
+        foreach ($items as &$it) {
+            $pid = $it['produk_id'] ?? null;
+            if (!$pid) {
+                continue;
+            }
+
+            $product = Product::find($pid);
+            if (!$product) {
+                continue;
+            }
+
+            // jika warna angka -> ubah ke label
+            if (array_key_exists('warna_id', $it) && is_numeric($it['warna_id'])) {
+                $idx = (int) $it['warna_id'];
+                $colors = $product->colors ?? [];
+                if (isset($colors[$idx])) {
+                    $it['warna_id'] = $colors[$idx]; // simpan label, contoh "3000K"
+                }
+            }
+        }
+
+        $garansi->products = $items;
+    }
+
+    /**
      * Jika kolom image berisi data URI base64, simpan ke disk dan set jadi path file.
      */
     protected static function consumeImageString(Garansi $garansi): void
@@ -90,14 +135,14 @@ class Garansi extends Model
         $img = (string) ($garansi->image ?? '');
         if ($img === '') return;
 
-        // Jika sudah URL http/https, biarkan
+        // jika sudah URL http/https, biarkan
         if (str_starts_with($img, 'http://') || str_starts_with($img, 'https://')) {
             return;
         }
 
         // Data URI? "data:image/png;base64,AAAA..."
         if (preg_match('/^data:image\/([a-zA-Z0-9.+-]+);base64,/', $img, $m)) {
-            $ext = strtolower($m[1] ?? 'png');
+            $ext  = strtolower($m[1] ?? 'png');
             $data = substr($img, strpos($img, ',') + 1);
             $bin  = base64_decode($data, true);
             if ($bin === false) return;
@@ -108,7 +153,7 @@ class Garansi extends Model
         }
     }
 
-   // ================= PRODUK =================
+    // ================= PRODUK =================
     public function productsWithDetails(): array
     {
         $raw = $this->products;
@@ -151,7 +196,6 @@ class Garansi extends Model
                 $addr['kode_pos'] ?? '',
             ];
 
-            // buang yang kosong atau "-"
             $cleaned = array_filter($parts, function ($v) {
                 $v = trim((string) $v);
                 return $v !== '' && $v !== '-';
