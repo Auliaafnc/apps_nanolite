@@ -257,7 +257,11 @@ class OrderResource extends Resource
         }
     })
     ->searchable()
-    ->required(),
+    ->required()
+    ->extraAttributes([
+        'class' => 'whitespace-normal', // ✅ biar text bisa multiline
+        'style' => 'white-space: normal; word-break: break-word; max-width: 280px;', // ✅ wrap ke bawah
+    ]),
 
 
                         Select::make('warna_id')

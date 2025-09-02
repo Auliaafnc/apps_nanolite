@@ -394,7 +394,36 @@ class _ReturnScreenState extends State<ReturnScreen> {
             _textCell(r.nominal, width: 110),
             _textCell(r.reason, width: 160),
             _textCell(r.notes, width: 160),
-            _textCell(r.productDetail, width: 360),
+          DataCell(
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: r.productDetail
+                  .split('\n')
+                  .map((line) => line.trim())
+                  .where((line) => line.isNotEmpty)
+                  .map((line) {
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "• ",
+                      style: TextStyle(fontSize: 13, color: Colors.white),
+                    ),
+                    Expanded(
+                      child: Text(
+                        line,
+                        style: const TextStyle(fontSize: 13, color: Colors.white),
+                      ),
+                    ),
+                  ],
+                );
+              }).toList(),
+            ),
+          ),
+
+
+
 
             // ==== Gambar bulat & klik ====
             DataCell(

@@ -26,7 +26,7 @@ class Customer {
   final String status;
   final String? statusPengajuan;
 
-  final List<String> images;
+  final String? imageUrl; 
 
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -52,7 +52,7 @@ class Customer {
     required this.rewardPoint,
     required this.status,
     this.statusPengajuan,
-    this.images = const [],
+     this.imageUrl,
     this.createdAt,
     this.updatedAt,
   });
@@ -141,7 +141,7 @@ class Customer {
       rewardPoint: _toInt(j['reward_point']),
       status: _toString(j['status']),
       statusPengajuan: _optString(j['status_pengajuan']),
-      images: _toImages(j['images'] ?? j['image']),
+      imageUrl: j['image']?.toString(), 
       createdAt: _parseDate(j['created_at']),
       updatedAt: _parseDate(j['updated_at']),
     );

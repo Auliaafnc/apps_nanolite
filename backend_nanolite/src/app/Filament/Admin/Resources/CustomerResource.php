@@ -112,38 +112,38 @@ class CustomerResource extends Resource
             Repeater::make('address')
                 ->label('Alamat')
                 ->schema([
-                    Select::make('provinsi')
+                    Select::make('provinsi_code')
                         ->label('Provinsi')
                         ->options(fn () => Provinsi::pluck('name', 'code')->toArray())
                         ->searchable()->reactive()
-                        ->afterStateUpdated(fn (callable $set) => $set('kota_kab', null)),
+                        ->afterStateUpdated(fn (callable $set) => $set('kota_kab_code', null)),
 
-                    Select::make('kota_kab')
+                    Select::make('kota_kab_code')
                         ->label('Kota/Kabupaten')
                         ->options(function (callable $get) {
-                            if ($prov = $get('provinsi')) {
+                            if ($prov = $get('provinsi_code')) {
                                 return Kabupaten::where('province_code', $prov)->pluck('name', 'code')->toArray();
                             }
                             return [];
                         })
                         ->searchable()->reactive()
-                        ->afterStateUpdated(fn (callable $set) => $set('kecamatan', null)),
+                        ->afterStateUpdated(fn (callable $set) => $set('kecamatan_code', null)),
 
-                    Select::make('kecamatan')
+                    Select::make('kecamatan_code')
                         ->label('Kecamatan')
                         ->options(function (callable $get) {
-                            if ($kab = $get('kota_kab')) {
+                            if ($kab = $get('kota_kab_code')) {
                                 return Kecamatan::where('city_code', $kab)->pluck('name', 'code')->toArray();
                             }
                             return [];
                         })
                         ->searchable()->reactive()
-                        ->afterStateUpdated(fn (callable $set) => $set('kelurahan', null)),
+                        ->afterStateUpdated(fn (callable $set) => $set('kelurahan_code', null)),
 
-                    Select::make('kelurahan')
+                    Select::make('kelurahan_code')
                         ->label('Kelurahan')
                         ->options(function (callable $get) {
-                            if ($kec = $get('kecamatan')) {
+                            if ($kec = $get('kecamatan_code')) {
                                 return Kelurahan::where('district_code', $kec)->pluck('name', 'code')->toArray();
                             }
                             return [];
@@ -157,17 +157,11 @@ class CustomerResource extends Resource
                     TextInput::make('kode_pos')->label('Kode Pos')->readOnly(),
                     Textarea::make('detail_alamat')->label('Detail Alamat')->rows(3)->required(),
                 ])
+
                 ->columns(3)->defaultItems(1)
                 ->disableItemCreation()->disableItemDeletion()->dehydrated(),
 
-                FileUpload::make('image')
-                ->label('Gambar')
-                ->image()
-                ->disk('public')          // ⬅️ penting
-                ->directory('customers')
-                ->visibility('public')
-                ->nullable(),
-            
+            FileUpload::make('image')->label('Gambar')->image()->directory('customers')->nullable(),
 
             Select::make('status_pengajuan')
                 ->label('Status Pengajuan')
@@ -232,40 +226,38 @@ class CustomerResource extends Resource
                     ->getStateUsing(fn ($record) => $record->reward_point ?? 0)
                     ->sortable()->alignCenter(),
 
-                    ImageColumn::make('image')
-                    ->label('Gambar')
-                    ->getStateUsing(function ($record) {
-                        $val = $record->image;
-                
-                        // Jika tersimpan sebagai JSON string: "[\"path1\",\"path2\"]"
-                        if (is_string($val) && str_starts_with($val, '[')) {
-                            $decoded = json_decode($val, true);
-                            $val = is_array($decoded) ? ($decoded[0] ?? null) : $val;
-                        }
-                
-                        // Jika array langsung
-                        if (is_array($val)) {
-                            $val = $val[0] ?? null;
-                        }
-                
-                        if (blank($val)) {
-                            return null;
-                        }
-                
-                        // Buat absolut: pastikan tanpa prefix "storage/"
-                        $val = preg_replace('#^/?storage/#', '', $val);
-                
-                        // Kalau sudah absolut, langsung pakai
-                        if (preg_match('#^https?://#', $val)) {
-                            return $val;
-                        }
-                
-                        // Perlu symlink storage:link
-                        return asset('storage/' . ltrim($val, '/'));
-                    })
-                    ->disk('public')
-                    ->square(),
-                
+                ImageColumn::make('image')
+    ->label('Gambar')
+    ->getStateUsing(function ($record) {
+        $val = $record->image;
+
+        // Kalau datanya berupa JSON string → ambil index pertama
+        if (is_string($val) && str_starts_with($val, '[')) {
+            $decoded = json_decode($val, true);
+            $val = is_array($decoded) ? ($decoded[0] ?? null) : $val;
+        }
+        // Kalau array → ambil index pertama
+        if (is_array($val)) {
+            $val = $val[0] ?? null;
+        }
+        if (blank($val)) {
+            return null;
+        }
+
+        // Hilangkan prefix storage/ biar konsisten
+        $val = preg_replace('#^/?storage/#', '', $val);
+
+        // Kalau sudah URL langsung, pakai saja
+        if (preg_match('#^https?://#', $val)) {
+            return $val;
+        }
+
+        // Default → ambil dari storage public
+        return asset('storage/' . ltrim($val, '/'));
+    })
+    ->disk('public')
+    ->circular(), // ✅ tampil bulat
+
 
                 BadgeColumn::make('status_pengajuan')
                     ->label('Status Pengajuan')

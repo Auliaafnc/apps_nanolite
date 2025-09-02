@@ -96,7 +96,7 @@ class OrderRow {
       final qty   = p['quantity'] ?? 0;
       final price = p['price'] ?? 0;
       return '$brand-$cat-$prod-$col-Rp$price-Qty:$qty';
-    }).join(' • ');
+    }).join('\n');
   }
 
   static String _combineDiskon(Map? d) {

@@ -5,11 +5,12 @@ namespace App\Filament\Admin\Resources\CustomerResource\Api\Handlers;
 use App\Filament\Admin\Resources\CustomerResource;
 use App\Filament\Admin\Resources\CustomerResource\Api\Requests\CreateCustomerRequest;
 use Rupadana\ApiService\Http\Handlers;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Http\UploadedFile;
 
 class CreateHandler extends Handlers
 {
     public static ?string $uri = '/';
+
     public static ?string $resource = CustomerResource::class;
 
     public static function getMethod()
@@ -33,20 +34,15 @@ class CreateHandler extends Handlers
         $data = $request->except('image');
         $model->fill($data);
 
-        // handle multi-upload image
-        $paths = [];
-        $files = $request->file('image') ?? $request->file('image.*') ?? $request->file('image[]');
+        // handle upload satu gambar
+        $file = $request->file('image') 
+            ?? $request->file('image.0') 
+            ?? $request->file('image[]');
 
-        if ($files) {
-            foreach ((array) $files as $file) {
-                $paths[] = $file->store('customers', 'public');
-            }
+        if ($file instanceof UploadedFile) {
+            $path = $file->store('customers', 'public');
+            $model->image = $path; // ✅ simpan string path
         }
-
-        if (!empty($paths)) {
-            $model->image = json_encode($paths);
-        }
-
 
         $model->save();
 

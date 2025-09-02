@@ -472,7 +472,34 @@ class _SalesOrderScreenState extends State<SalesOrderScreen> {
             _textCell(o.category, width: 140),
             _textCell(o.phone, width: 120),
             _textCell(o.address, width: 260),
-            _textCell(o.productDetail, width: 360),
+           DataCell(
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: o.productDetail
+                  .split('\n')
+                  .map((line) => line.trim())
+                  .where((line) => line.isNotEmpty)
+                  .map((line) {
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "• ",
+                      style: TextStyle(fontSize: 13, color: Colors.white),
+                    ),
+                    Expanded(
+                      child: Text(
+                        line,
+                        style: const TextStyle(fontSize: 13, color: Colors.white),
+                      ),
+                    ),
+                  ],
+                );
+              }).toList(),
+            ),
+          ),
+
             _textCell(o.totalAwal, width: 110),
             _textCell(o.diskon, width: 100),
             _textCell(o.reasonDiskon, width: 180),

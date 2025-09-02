@@ -49,7 +49,6 @@ class GaransiTransformer extends JsonResource
             'products'          => $productsReadable,
             'status'            => $statusLabel,
             'file_pdf_url'      => $this->garansi_file  ? Storage::url($this->garansi_file)  : null,
-            'file_excel_url'    => $this->garansi_excel ? Storage::url($this->garansi_excel) : null,
             'created_at'        => optional($this->created_at)->format('d/m/Y'),
             'updated_at'        => optional($this->updated_at)->format('d/m/Y'),
         ];

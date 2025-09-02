@@ -46,6 +46,7 @@ class ProductReturn extends Model
         'amount'                 => 'decimal:2',
         'created_at'             => 'datetime',
         'updated_at'             => 'datetime',
+        'image'                  => 'array',
     ];
 
     protected static function booted()

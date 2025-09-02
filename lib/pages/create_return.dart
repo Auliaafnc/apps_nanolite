@@ -336,20 +336,7 @@ class _CreateReturnScreenState extends State<CreateReturnScreen> {
       return;
     }
 
-    String? imageStr;
-    if (_photos.isNotEmpty) {
-      try {
-        final first = _photos.first;
-        final bytes = await first.readAsBytes();
-        final n = (first.name.isNotEmpty ? first.name : first.path).toLowerCase();
-        final mime = n.endsWith('.png')
-            ? 'image/png'
-            : n.endsWith('.webp')
-                ? 'image/webp'
-                : 'image/jpeg';
-        imageStr = 'data:$mime;base64,${base64Encode(bytes)}';
-      } catch (_) {}
-    }
+    
 
     setState(() => _submitting = true);
     final ok = await ApiService.createReturn(
@@ -364,9 +351,8 @@ class _CreateReturnScreenState extends State<CreateReturnScreen> {
       reason: _reasonCtrl.text.trim(),
       note: _noteCtrl.text.trim().isEmpty ? null : _noteCtrl.text.trim(),
       products: products,
-      photos: _photos,   // ✅ langsung kirim XFile list
+      photos: _photos,
     );
-
     if (mounted) setState(() => _submitting = false);
 
     if (!mounted) return;
@@ -829,12 +815,12 @@ class _CreateReturnScreenState extends State<CreateReturnScreen> {
                   value: e,
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxWidth: 200), 
-                    child: Flexible( 
+                    child: Expanded( 
                       child: Text(
                         (e is OptionItem) ? e.name : e.toString(),
                         softWrap: true,                
                         overflow: TextOverflow.visible, 
-                        maxLines: null,                 
+                        maxLines: 3,                 
                         style: const TextStyle(color: Colors.white),
                       ),
 

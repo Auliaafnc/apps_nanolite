@@ -430,22 +430,18 @@ class _CustomerScreenState extends State<CustomerScreen> {
               t(c.rewardPoint.toString()),
               // ==== Gambar bulat & klik ====
              
+              
               DataCell(
-              (c.images.isEmpty)
-                  ? const Text('-')
-                  : Row(
-                      children: c.images.map((url) {
-                        return Padding(
-                          padding: const EdgeInsets.only(right: 4),
-                          child: ClickableThumb(
-                            url: url,
-                            heroTag: 'customer_${c.id}_${url.hashCode}',
-                            size: 36,
-                          ),
-                        );
-                      }).toList(),
-                    ),
+                (c.imageUrl == null || c.imageUrl!.isEmpty)
+                    ? const Text('-')
+                    : ClickableThumb(
+                        url: c.imageUrl!,
+                        heroTag: 'customer_${c.id}', // unik per baris
+                        size: 40,
+                      ),
               ),
+
+
 
 
               // ==== STATUS pakai chip ====

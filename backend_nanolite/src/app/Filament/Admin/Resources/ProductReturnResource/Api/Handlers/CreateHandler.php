@@ -5,6 +5,7 @@ namespace App\Filament\Admin\Resources\ProductReturnResource\Api\Handlers;
 use App\Filament\Admin\Resources\ProductReturnResource;
 use App\Filament\Admin\Resources\ProductReturnResource\Api\Requests\CreateProductReturnRequest;
 use Rupadana\ApiService\Http\Handlers;
+use Illuminate\Http\UploadedFile;
 
 class CreateHandler extends Handlers
 {
@@ -33,18 +34,14 @@ class CreateHandler extends Handlers
         $data = $request->except('image');
         $model->fill($data);
 
-        // handle multi-upload image
-        $paths = [];
-        $files = $request->file('image') ?? $request->file('image.*') ?? $request->file('image[]');
+        // handle upload satu gambar
+        $file = $request->file('image') 
+            ?? $request->file('image.0') 
+            ?? $request->file('image[]');
 
-        if ($files) {
-            foreach ((array) $files as $file) {
-                $paths[] = $file->store('product-returns', 'public');
-            }
-        }
-
-        if (!empty($paths)) {
-            $model->image = json_encode($paths);
+        if ($file instanceof UploadedFile) {
+            $path = $file->store('product-returns', 'public');
+            $model->image = $path; // ✅ simpan string path
         }
 
         $model->save();

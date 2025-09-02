@@ -412,7 +412,33 @@ class _GaransiScreenState extends State<GaransiScreen> {
             _textCell(g.claimDate, width: 140),
             _textCell(g.reason, width: 180),
             _textCell(g.notes, width: 160),
-            _textCell(g.productDetail, width: 360),
+            DataCell(
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: g.productDetail
+                  .split('\n')
+                  .map((line) => line.trim())
+                  .where((line) => line.isNotEmpty)
+                  .map((line) {
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "• ",
+                      style: TextStyle(fontSize: 13, color: Colors.white),
+                    ),
+                    Expanded(
+                      child: Text(
+                        line,
+                        style: const TextStyle(fontSize: 13, color: Colors.white),
+                      ),
+                    ),
+                  ],
+                );
+              }).toList(),
+            ),
+          ),
 
             // ====== Gambar bulat & klik ======
             DataCell(

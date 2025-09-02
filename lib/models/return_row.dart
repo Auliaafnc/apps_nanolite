@@ -92,7 +92,7 @@ class ReturnRow {
       final col   = _s(p['color']);
       final qty   = p['quantity'] ?? 0;
       return '$brand-$cat-$prod-$col-Qty:$qty';
-    }).join(' • ');
+    }).join('\n');
   }
 
   factory ReturnRow.fromJson(Map<String, dynamic> j) {
@@ -127,7 +127,7 @@ class ReturnRow {
       status: _s(j['status']),
       createdAt: _s(j['created_at']),
       updatedAt: _s(j['updated_at']),
-      imageUrl: j['image']?.toString(),
+     imageUrl: j['image']?.toString(),  
       pdfUrl: j['file_pdf_url']?.toString(), // penting: mapping ke pdfUrl
     );
   }

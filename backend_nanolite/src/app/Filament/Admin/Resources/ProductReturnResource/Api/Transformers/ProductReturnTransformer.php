@@ -50,7 +50,9 @@ class ProductReturnTransformer extends JsonResource
             'note'               => $this->note ?: null,
 
             // URL gambar publik (null jika kosong)
-            'image'              => $imgPath ? Storage::url($imgPath) : null,
+            'image' => $this->cleanPath($this->image) 
+                ? Storage::url($this->cleanPath($this->image)) 
+                : null,
 
             'products'           => $productsReadable,
             'status'             => $statusLabel,

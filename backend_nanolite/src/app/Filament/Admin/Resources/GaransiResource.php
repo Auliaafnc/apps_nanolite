@@ -237,7 +237,11 @@ class GaransiResource extends Resource
                 }
             })
             ->searchable()
-            ->required(),
+            ->required()
+            ->extraAttributes([
+        'class' => 'whitespace-normal', // ✅ biar text bisa multiline
+        'style' => 'white-space: normal; word-break: break-word; max-width: 280px;', // ✅ wrap ke bawah
+            ]),
 
         // WARNA (selalu kunci=label, value=label)
         Select::make('warna_id')

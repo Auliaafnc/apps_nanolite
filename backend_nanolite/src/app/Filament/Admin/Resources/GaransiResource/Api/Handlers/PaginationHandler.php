@@ -18,7 +18,7 @@ class PaginationHandler extends Handlers
     public function handler()
     {
         $paginator = QueryBuilder::for(static::getModel())
-            ->allowedFilters(['status','phone','reason','purchase_date','claim_date'])
+            ->allowedFilters(['no_garansi', 'status','phone','reason','purchase_date','claim_date'])
             ->with(['company','customerCategory','employee','customer','department'])
             ->paginate($this->perPage(request()))
             ->appends(request()->query())

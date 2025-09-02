@@ -1012,7 +1012,7 @@ class ApiService {
     int? customerProgramId,
     String? gmapsLink,
     required AddressInput address,
-    List<XFile>? photos,
+    List<XFile>? photos,  
   }) async {
     final url = _buildUri('customers');
     final headers = await _authorizedHeaders();
@@ -1079,21 +1079,20 @@ class ApiService {
       request.fields['address[0][kelurahan][name]'] = address.kelurahanName!;
     }
 
-    // upload multi foto
-    if (photos != null && photos.isNotEmpty) {
-      for (final photo in photos) {
-        if (kIsWeb) {
-          final bytes = await photo.readAsBytes();
-          request.files.add(
-            http.MultipartFile.fromBytes('image[]', bytes, filename: photo.name),
-          );
-        } else {
-          request.files.add(
-            await http.MultipartFile.fromPath('image[]', photo.path),
-          );
-        }
-      }
-    }
+ // ===== Upload foto (multi) =====
+  if (photos != null && photos.isNotEmpty) {
+  final file = photos.first;
+  if (kIsWeb) {
+    final bytes = await file.readAsBytes();
+    request.files.add(http.MultipartFile.fromBytes(
+      'image',
+      bytes,
+      filename: file.name,
+    ));
+  } else {
+    request.files.add(await http.MultipartFile.fromPath('image', file.path));
+  }
+}
 
     final streamedResponse = await request.send();
     final res = await http.Response.fromStream(streamedResponse);
@@ -1121,10 +1120,11 @@ class ApiService {
   return items.map((raw) {
     final map = Map<String, dynamic>.from(raw);
     map['image'] =
-        _absoluteUrl((map['image'] ?? map['image_url'] ?? '').toString()); // 🔥 tambahin ini
-    return Customer.fromJson(map);
-  }).toList();
+            _absoluteUrl((map['image'] ?? map['image_url'] ?? '').toString());
+        return Customer.fromJson(map);
+      }).toList();
 }
+
 
 
   // ---------- SALES ORDERS ----------
@@ -1353,10 +1353,10 @@ static Future<bool> createReturn({
   required String reason,
   String? note,
   String status = 'pending',
-  List<XFile>? photos, // ✅ sekarang pakai file list, bukan base64
+  List<XFile>? photos,  
 }) async {
-  final url = _buildUri('product-returns');
-  final headers = await _authorizedHeaders();
+  final url = _buildUri('product-returns'); // sesuaikan jika rute berbeda
+  final headers = await _authorizedHeaders(jsonContent: true);
 
   final request = http.MultipartRequest('POST', url);
   request.headers.addAll(headers);
@@ -1398,26 +1398,21 @@ static Future<bool> createReturn({
 
   // ===== Upload foto (multi) =====
   if (photos != null && photos.isNotEmpty) {
-    for (final photo in photos) {
-      if (kIsWeb) {
-        final bytes = await photo.readAsBytes();
-        request.files.add(
-          http.MultipartFile.fromBytes(
-            'image[]',
-            bytes,
-            filename: photo.name,
-          ),
-        );
-      } else {
-        request.files.add(
-          await http.MultipartFile.fromPath(
-            'image[]',
-            photo.path,
-          ),
-        );
-      }
-    }
+  final file = photos.first;
+  if (kIsWeb) {
+    final bytes = await file.readAsBytes();
+    request.files.add(http.MultipartFile.fromBytes(
+      'image',
+      bytes,
+      filename: file.name,
+    ));
+  } else {
+    request.files.add(await http.MultipartFile.fromPath('image', file.path));
   }
+}
+
+
+
 
   // ===== Kirim request =====
   final streamed = await request.send();
@@ -1427,6 +1422,7 @@ static Future<bool> createReturn({
   print("DEBUG createReturn => ${res.statusCode} ${res.body}");
 
   return res.statusCode == 200 || res.statusCode == 201;
+  
 }
 
 

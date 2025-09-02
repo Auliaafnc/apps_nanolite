@@ -84,7 +84,7 @@ class GaransiRow {
       final col   = _s(p['color']);
       final qty   = p['quantity'] ?? p['qty'] ?? 0;
       return '$brand-$cat-$prod-$col-Qty:$qty';
-    }).join(' • ');
+    }).join('\n');
   }
 
   // ---- mapper (diseragamkan dengan ReturnRow) ----

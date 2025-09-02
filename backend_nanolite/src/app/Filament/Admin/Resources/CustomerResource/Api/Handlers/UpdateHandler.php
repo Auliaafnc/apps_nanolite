@@ -6,10 +6,12 @@ use App\Filament\Admin\Resources\CustomerResource;
 use App\Filament\Admin\Resources\CustomerResource\Api\Requests\UpdateCustomerRequest;
 use Rupadana\ApiService\Http\Handlers;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Http\UploadedFile;
 
 class UpdateHandler extends Handlers
 {
     public static ?string $uri = '/{record}';
+
     public static ?string $resource = CustomerResource::class;
 
     public static function getMethod()
@@ -33,26 +35,20 @@ class UpdateHandler extends Handlers
         $data = $request->except('image');
         $model->fill($data);
 
-        // handle multi-upload image
-        if ($request->hasFile('image')) {
+        // handle replace image tunggal
+        $file = $request->file('image') 
+            ?? $request->file('image.0') 
+            ?? $request->file('image[]');
+
+        if ($file instanceof UploadedFile) {
             // hapus foto lama kalau ada
-            if ($model->image) {
-                $oldFiles = json_decode($model->image, true);
-                if (is_array($oldFiles)) {
-                    foreach ($oldFiles as $old) {
-                        if (Storage::disk('public')->exists($old)) {
-                            Storage::disk('public')->delete($old);
-                        }
-                    }
-                }
+            if ($model->image && Storage::disk('public')->exists($model->image)) {
+                Storage::disk('public')->delete($model->image);
             }
 
             // upload baru
-            $paths = [];
-            foreach ($request->file('image') as $file) {
-                $paths[] = $file->store('customers', 'public');
-            }
-            $model->image = json_encode($paths);
+            $path = $file->store('customers', 'public');
+            $model->image = $path;
         }
 
         $model->save();
